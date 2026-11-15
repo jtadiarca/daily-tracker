@@ -8,13 +8,13 @@ const multi = { id: 'm', time: '08:00', times: ['20:00', '08:00', '14:00'] }
 describe('slotsOf', () => {
   it('returns one slot for single-time and untimed tasks', () => {
     expect(slotsOf(single, '2026-11-15')).toEqual(['09:00'])
-    expect(slotsOf(untimed, '2026-11-15')).toEqual([null])
+    expect(slotsOf({}, '2026-11-15')).toEqual([null])
   })
   it('returns sorted, unique times for multi-time tasks', () => {
     expect(slotsOf({ ...multi, times: ['20:00', '08:00', '08:00'] }, '2026-11-15')).toEqual(['08:00', '20:00'])
   })
   it('ignores a times list with fewer than two entries', () => {
-    expect(slotsOf({ id: 'x', time: '07:00', times: ['10:00'] }, '2026-11-15')).toEqual(['07:00'])
+    expect(slotsOf({ time: '07:00', times: ['10:00'] }, '2026-11-15')).toEqual(['07:00'])
   })
   it('uses the single time before timesFrom and the list from that date on', () => {
     const t = { ...multi, timesFrom: '2026-11-15' }
