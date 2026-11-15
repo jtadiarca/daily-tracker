@@ -34,7 +34,7 @@ export function CategoryManager() {
   return (
     <section aria-labelledby="cat-h" className="card">
       <h2 id="cat-h" className="mb-1 text-xl">Categories</h2>
-      <p className="mb-3 text-sm text-on-surface-variant">Create your own categories to group tasks on Today and Upcoming. Deleting one keeps its tasks.</p>
+      <p className="mb-3 text-sm text-on-surface-variant">Create your own categories to group tasks on Today and Upcoming and to break down the Dashboard. Deleting one keeps its tasks.</p>
       {categories.length === 0 && <p className="mb-3 text-on-surface-variant">No categories yet.</p>}
       <ul className="mb-3 space-y-2">
         {categories.map(c => (

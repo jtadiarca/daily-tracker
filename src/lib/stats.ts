@@ -1,4 +1,5 @@
-import type { Task } from '../db/types'
+import type { Category, Task } from '../db/types'
+import { categoryOf, FILTER_NONE } from './categories'
 import { addDaysStr } from './dates'
 import { occursOn } from './recurrence'
 import { isSlotDone, rescheduleKey, slotsOf, type Slot } from './slots'
@@ -43,6 +44,31 @@ export function missedOccurrences(tasks: Task[], doneKeys: Set<string>, from: st
     }
   }
   return out.sort((a, b) => b.date.localeCompare(a.date) || (b.slot ?? '').localeCompare(a.slot ?? ''))
+}
+
+export interface CategoryStat { key: string; category: Category | null; total: number; done: number; missed: number; rate: number | null }
+
+// Totals per category over a date range, in category order with "No category" last.
+// Categories with nothing scheduled in the range are left out.
+export function categoryBreakdown(tasks: Task[], doneKeys: Set<string>, live: Category[], from: string, to: string, now: Date): CategoryStat[] {
+  const rows: CategoryStat[] = live.map(category => ({ key: category.id, category, total: 0, done: 0, missed: 0, rate: null }))
+  const none: CategoryStat = { key: FILTER_NONE, category: null, total: 0, done: 0, missed: 0, rate: null }
+  const byId = new Map(rows.map(r => [r.key, r]))
+  const rowOf = new Map(tasks.map(t => [t.id, byId.get(categoryOf(t, live)?.id ?? '') ?? none]))
+  for (let d = from; d <= to; d = addDaysStr(d, 1)) {
+    for (const t of tasks) {
+      if (t.deletedAt || !occursOn(t, d)) continue
+      const row = rowOf.get(t.id)!
+      for (const slot of slotsOf(t, d)) {
+        row.total++
+        if (isSlotDone(doneKeys, t, d, slot)) row.done++
+        else if (deriveStatus({ date: d, time: slot ?? undefined, done: false, now }) === 'missed') row.missed++
+      }
+    }
+  }
+  return [...rows, none]
+    .filter(r => r.total > 0)
+    .map(r => ({ ...r, rate: r.done / r.total }))
 }
 
 export function streakWindowStart(tasks: Task[], today: string): string {

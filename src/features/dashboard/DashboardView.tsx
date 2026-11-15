@@ -4,14 +4,27 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { ProgressRing } from '../../components/ProgressRing'
 import { markDoneLate, rescheduleToToday } from '../../db/dashboardActions'
 import { addDaysStr, parseDateStr, todayStr } from '../../lib/dates'
-import { computeStreaks, dayStat, missedOccurrences, rangeStats, streakWindowStart } from '../../lib/stats'
+import { categoryOf, effectiveFilter, FILTER_ALL, FILTER_NONE, matchesFilter } from '../../lib/categories'
+import { categoryBreakdown, computeStreaks, dayStat, missedOccurrences, rangeStats, streakWindowStart } from '../../lib/stats'
 import { formatTime } from '../../lib/time'
+import { CategoryFilter } from '../categories/CategoryFilter'
+import { useCategories } from '../categories/useCategories'
+import { useDashboardCategoryFilter } from '../categories/useCategoryView'
 import { useDashboardData } from './useDashboardData'
 
 type Preset = '7' | '30' | 'custom'
 
 export function DashboardView({ now }: { now: Date }) {
-  const data = useDashboardData()
+  const raw = useDashboardData()
+  const categories = useCategories()
+  const catView = useDashboardCategoryFilter()
+  const filter = effectiveFilter(catView.filter, categories)
+  // Every number on the page follows the category filter, so filter the tasks once up front.
+  const data = useMemo(
+    () => (raw ? { ...raw, tasks: raw.tasks.filter(t => matchesFilter(t, filter, categories)) } : undefined),
+    [raw, filter, categories],
+  )
+  const filterLabel = filter === FILTER_ALL ? null : filter === FILTER_NONE ? 'tasks with no category' : `“${categories.find(c => c.id === filter)?.name}”`
   const today = todayStr(now)
   const [preset, setPreset] = useState<Preset>('7')
   const [customFrom, setCustomFrom] = useState(() => addDaysStr(todayStr(), -13))
@@ -24,7 +37,7 @@ export function DashboardView({ now }: { now: Date }) {
 
   const nowMinute = Math.floor(now.getTime() / 60000)
   const snapshot = useMemo(() => new Date(nowMinute * 60000), [nowMinute])
-  const doneSet = useMemo(() => new Set(data?.doneKeys ?? []), [data])
+  const doneSet = useMemo(() => new Set(raw?.doneKeys ?? []), [raw])
 
   // Streaks depend only on done/total counts, so they refresh when data or the day changes, not every minute.
   const streaks = useMemo(() => {
@@ -35,6 +48,11 @@ export function DashboardView({ now }: { now: Date }) {
   const todayStat = useMemo(() => (data ? dayStat(data.tasks, doneSet, today, snapshot) : null), [data, doneSet, today, snapshot])
   const days = useMemo(() => (data && rangeValid ? rangeStats(data.tasks, doneSet, from, to, snapshot) : []), [data, doneSet, from, to, snapshot, rangeValid])
   const missed = useMemo(() => (data && rangeValid ? missedOccurrences(data.tasks, doneSet, from, to, snapshot) : []), [data, doneSet, from, to, snapshot, rangeValid])
+  const showBreakdown = filter === FILTER_ALL && categories.length > 0
+  const breakdown = useMemo(
+    () => (data && rangeValid && showBreakdown ? categoryBreakdown(data.tasks, doneSet, categories, from, to, snapshot) : []),
+    [data, doneSet, categories, from, to, snapshot, rangeValid, showBreakdown],
+  )
 
   const withTasks = days.filter(d => d.total > 0)
   const doneSum = withTasks.reduce((s, d) => s + d.done, 0)
@@ -55,6 +73,10 @@ export function DashboardView({ now }: { now: Date }) {
     <section aria-labelledby="dash-h" className="mx-auto max-w-xl space-y-6 p-4 pb-32">
       <h1 id="dash-h" className="text-3xl">Dashboard</h1>
       {error && <p role="alert" className="text-error">{error}</p>}
+      <div>
+        <CategoryFilter categories={categories} view={catView} showGroupBy={false} />
+        {filterLabel && <p className="-mt-2 text-sm text-on-surface-variant">Showing only {filterLabel}. Progress, streaks, the chart and missed tasks count these tasks only.</p>}
+      </div>
 
       <section aria-labelledby="today-h" className="card">
         <h2 id="today-h" className="mb-3 text-xl">Today</h2>
@@ -127,6 +149,32 @@ export function DashboardView({ now }: { now: Date }) {
         )}
       </section>
 
+      {showBreakdown && (
+        <section aria-labelledby="bycat-h" className="card">
+          <h2 id="bycat-h" className="mb-1 text-xl">By category</h2>
+          <p className="mb-3 text-sm text-on-surface-variant">Completion rate for each category in the selected range. Tap a name to show only that category.</p>
+          {breakdown.length === 0 ? <p className="text-on-surface-variant">No tasks in this range.</p> : (
+            <ul className="space-y-3">
+              {breakdown.map(r => {
+                const name = r.category?.name ?? 'No category'
+                const pct = Math.round((r.rate ?? 0) * 100)
+                return (
+                  <li key={r.key}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                      <button type="button" className="min-w-0 break-words text-left font-medium text-primary hover:underline" aria-label={`Show only ${name}`} onClick={() => catView.setFilter(r.key)}>{name}</button>
+                      <span className="text-sm tabular-nums text-on-surface-variant">{pct}% · {r.done} of {r.total} done{r.missed > 0 ? ` · ${r.missed} missed` : ''}</span>
+                    </div>
+                    <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-surface-container-highest" aria-hidden="true">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
       <section aria-labelledby="missed-h">
         <h2 id="missed-h" className="mb-2 text-xl">Missed tasks</h2>
         {missed.length === 0 ? <p className="text-on-surface-variant">Nothing missed in this range.</p> : (
@@ -138,7 +186,7 @@ export function DashboardView({ now }: { now: Date }) {
               return (
                 <li key={`${m.task.id}_${m.date}_${m.slot ?? ''}`} className="card">
                   <p className="font-medium">{m.task.title}</p>
-                  <p className="text-sm text-on-surface-variant">{when}</p>
+                  <p className="text-sm text-on-surface-variant">{when}{showBreakdown ? ` · ${categoryOf(m.task, categories)?.name ?? 'No category'}` : ''}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button className="btn-tonal" aria-label={`Mark ${m.task.title} from ${when} done late`} onClick={() => act(() => markDoneLate(m.task, m.date, m.slot))}>Mark done late</button>
                     <button className="btn-outlined" aria-label={`Reschedule ${m.task.title} from ${when} to today`} onClick={() => act(() => rescheduleToToday(m.task.id, m.date, m.slot, new Date()))}>Reschedule to today</button>

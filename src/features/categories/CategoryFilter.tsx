@@ -4,7 +4,12 @@ import type { CategoryView } from './useCategoryView'
 
 // Chips to show one category at a time, plus a switch between grouping by time and by category.
 // Nothing is drawn until the person has created at least one category.
-export function CategoryFilter({ categories, view }: { categories: Category[]; view: CategoryView }) {
+// Pass showGroupBy={false} where grouping by time makes no sense (the Dashboard).
+export function CategoryFilter({ categories, view, showGroupBy = true }: {
+  categories: Category[]
+  view: Pick<CategoryView, 'filter' | 'setFilter'> & Partial<Pick<CategoryView, 'groupBy' | 'setGroupBy'>>
+  showGroupBy?: boolean
+}) {
   if (categories.length === 0) return null
   const current = effectiveFilter(view.filter, categories)
   const chip = (value: string, label: string) => (
@@ -17,11 +22,11 @@ export function CategoryFilter({ categories, view }: { categories: Category[]; v
         {categories.map(c => chip(c.id, c.name))}
         {chip(FILTER_NONE, 'No category')}
       </div>
-      {current === FILTER_ALL && (
+      {showGroupBy && view.setGroupBy && current === FILTER_ALL && (
         <div role="group" aria-label="Group tasks by" className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-on-surface-variant">Group by</span>
           {(['category', 'time'] as const).map(g => (
-            <button key={g} type="button" aria-pressed={view.groupBy === g} onClick={() => view.setGroupBy(g)} className={`chip ${view.groupBy === g ? 'chip-selected' : ''}`}>{g === 'category' ? 'Category' : 'Time'}</button>
+            <button key={g} type="button" aria-pressed={view.groupBy === g} onClick={() => view.setGroupBy!(g)} className={`chip ${view.groupBy === g ? 'chip-selected' : ''}`}>{g === 'category' ? 'Category' : 'Time'}</button>
           ))}
         </div>
       )}

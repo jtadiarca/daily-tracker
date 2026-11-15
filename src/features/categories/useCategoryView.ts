@@ -25,6 +25,14 @@ export function useCategoryView(): CategoryView {
   return { filter, setFilter, groupBy, setGroupBy }
 }
 
+// The Dashboard keeps its own category filter, so narrowing Today does not narrow the stats.
+const DASH_FILTER_KEY = 'dtt.dashboardCategoryFilter'
+export function useDashboardCategoryFilter(): Pick<CategoryView, 'filter' | 'setFilter'> {
+  const [filter, setFilterState] = useState<CategoryFilter>(() => read(DASH_FILTER_KEY) || FILTER_ALL)
+  const setFilter = useCallback((f: CategoryFilter) => { setFilterState(f); write(DASH_FILTER_KEY, f) }, [])
+  return { filter, setFilter }
+}
+
 // Tasks are grouped under category headings only when categories exist, the view is on "Group by
 // category", and no single category is selected (a single category is just one group).
 export const groupsByCategory = (view: Pick<CategoryView, 'groupBy'>, effective: CategoryFilter, categoryCount: number): boolean =>
