@@ -10,6 +10,7 @@ export function TaskSheet({ open, task, date, onClose }: { open: boolean; task: 
   const [notes, setNotes] = useState('')
   const [startDate, setStartDate] = useState(date)
   const [time, setTime] = useState('')
+  const [reminder, setReminder] = useState('default')
   const [type, setType] = useState<RecurrenceType>('none')
   const [days, setDays] = useState<number[]>([])
   const [error, setError] = useState('')
@@ -18,6 +19,7 @@ export function TaskSheet({ open, task, date, onClose }: { open: boolean; task: 
     if (!open) { dialog.current?.close(); return }
     setTitle(task?.title ?? ''); setNotes(task?.notes ?? ''); setStartDate(task?.startDate ?? date)
     setTime(task?.time ?? ''); setType(task?.recurrence.type ?? 'none'); setDays(task?.recurrence.daysOfWeek ?? []); setError('')
+    setReminder(task?.reminderOffsetMin == null ? 'default' : String(task.reminderOffsetMin))
     if (!dialog.current?.open) dialog.current?.showModal()
   }, [open, task])
   const field = 'w-full rounded-lg border border-slate-400 bg-white px-3 py-2 dark:bg-slate-800'
@@ -27,7 +29,8 @@ export function TaskSheet({ open, task, date, onClose }: { open: boolean; task: 
     setSaving(true); setError('')
     try {
       const recurrence = { ...task?.recurrence, type, daysOfWeek: type === 'weekly' ? (days.length ? days : [dayOfWeek(startDate)]) : undefined }
-      const data = { title: title.trim(), notes: notes.trim() || undefined, startDate, time: time || undefined, recurrence }
+      const reminderOffsetMin = time && reminder !== 'default' ? Number(reminder) : null
+      const data = { title: title.trim(), notes: notes.trim() || undefined, startDate, time: time || undefined, recurrence, reminderOffsetMin }
       if (task) await updateTask(task.id, data); else await createTask(data)
       onClose()
     } catch (e) { setError(e instanceof Error ? e.message : 'Save failed') } finally { setSaving(false) }
@@ -40,6 +43,9 @@ export function TaskSheet({ open, task, date, onClose }: { open: boolean; task: 
     <label className="block">Time (optional)<input type="time" value={time} onChange={e => setTime(e.target.value)} className={field} /></label>
     {time && <button type="button" className="underline" onClick={() => setTime('')}>Clear time</button>}
     {time && deriveStatus({ date: startDate, time, done: false, now: new Date() }) === 'missed' && <p role="status">This time has passed. The occurrence will show as missed unless completed.</p>}
+    {time && <label className="block">Reminder<select className={field} value={reminder} onChange={e => setReminder(e.target.value)}>
+      <option value="default">Use default setting</option><option value="-1">No reminder</option><option value="0">At time of task</option>
+      <option value="5">5 minutes before</option><option value="15">15 minutes before</option><option value="30">30 minutes before</option><option value="60">1 hour before</option></select></label>}
     <label className="block">Repeat<select className={field} value={type} onChange={e => setType(e.target.value as RecurrenceType)}><option value="none">Does not repeat</option><option value="daily">Daily</option><option value="weekdays">Weekdays (Mon–Fri)</option><option value="weekly">Weekly on chosen days</option></select></label>
     {type === 'weekly' && <fieldset><legend>On these days</legend><div className="flex flex-wrap gap-3">{DAYS.map((label, day) => <label key={day} className="flex items-center gap-1 py-2"><input type="checkbox" checked={days.includes(day)} onChange={() => setDays(current => current.includes(day) ? current.filter(d => d !== day) : [...current, day].sort())} />{label}</label>)}</div><p className="text-sm">If none are selected, uses the start date’s weekday.</p></fieldset>}
     {task && task.recurrence.type !== 'none' && <p className="text-sm">Edits apply to the whole series, including historical labels and schedules. Existing completion records remain unchanged.</p>}
