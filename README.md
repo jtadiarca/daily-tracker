@@ -14,7 +14,35 @@ A personal daily to-do app that works offline and keeps all of its data on your 
 - **Reminders:** spoken aloud first (beep only if speech fails), plus a system notification or an in-app toast. See [docs/reminders.md](docs/reminders.md).
 - **Upcoming:** the next 14 days.
 - **Dashboard:** today's progress ring, completion rate chart (7 days, 30 days or a custom range), current and best streak, and a missed list with "Mark done late" and "Reschedule to today".
-- **Settings:** install, default reminder, notification permission, 12 or 24 hour time, backup and transfer.
+- **Settings:** install, default reminder, notification permission, 12 or 24 hour time (12 hour by default), backup and transfer.
+- **Design:** Material 3 color roles, shapes and components, with light and dark themes that follow the system setting.
+
+## Set up on a new Windows PC
+
+The setup script installs what is missing and gets the app running. It will:
+
+1. Allow local PowerShell scripts for your user (execution policy `RemoteSigned`), which fixes the "running scripts is disabled" error for `npm`.
+2. Install Git and Node.js LTS with winget if they are missing or older than Node 20.
+3. Clone this repository (or update it), run `npm install`, and run the tests.
+4. Start the development server and open the app in your browser.
+
+If you already have the project, double-click `setup.cmd`, or run this in PowerShell from the project folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+```
+
+Options: `-Dir C:\dev\daily-tracker` (where to clone), `-SkipTests`, `-Build` (also run a production build), `-NoStart` (do not start the app), `-RepoUrl <url>`.
+
+If the project is not on the machine yet and the repository is public, this one line downloads and runs the script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/jtadiarca/daily-tracker/main/scripts/setup.ps1 -OutFile $env:TEMP\setup-daily-tracker.ps1; & $env:TEMP\setup-daily-tracker.ps1"
+```
+
+If the repository is private, open `scripts/setup.ps1` on GitHub, choose Raw, save it, and run it with the command above. Git will ask you to sign in when it clones.
+
+Notes: Windows may show a permission prompt while winget installs Git and Node. The script needs winget, which comes with the Microsoft Store's App Installer on Windows 10 and 11. On macOS or Linux, install Git and Node.js 20 or newer yourself, then follow the steps below.
 
 ## Run it
 
@@ -75,11 +103,12 @@ Reminders are scheduled with timers while the app is open, and re-planned whenev
 ## Project layout
 
 ```
-src/db           Dexie schema, repositories, backup and import code
-src/lib          pure, tested logic: dates, recurrence, status, stats, reminders, merge, schema, migrations
-src/features     today, upcoming, dashboard, settings, reminders, backup
-src/components   shared components
-src/sw.ts        service worker (precaching, offline shell, notification click)
+scripts/setup.ps1   one-command setup for a new Windows PC (setup.cmd is a double-click launcher)
+src/db              Dexie schema, repositories, backup and import code
+src/lib             pure, tested logic: dates, recurrence, status, stats, reminders, merge, schema, migrations
+src/features        today, upcoming, dashboard, settings, reminders, backup
+src/components      shared components
+src/sw.ts           service worker (precaching, offline shell, notification click)
 ```
 
 ## Changing the backup format
