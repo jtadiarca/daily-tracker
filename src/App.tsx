@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { TabBar, type Tab } from './components/TabBar'
 import { TaskSheet } from './components/TaskSheet'
+import { purgeOldTombstones } from './db/backup'
+import { BackupBanner } from './features/backup/BackupBanner'
 import { TodayView } from './features/today/TodayView'
 import { DashboardView } from './features/dashboard/DashboardView'
 import { SettingsView } from './features/settings/SettingsView'
@@ -23,6 +25,8 @@ export default function App() {
   setTimeFormat(settings.timeFormat)
   useReminders(date)
 
+  useEffect(() => { void purgeOldTombstones() }, [])
+
   useEffect(() => {
     const openToday = () => setTab('today')
     const onMsg = (e: MessageEvent) => { if (e.data?.type === 'OPEN_TODAY') openToday() }
@@ -36,7 +40,12 @@ export default function App() {
   return (
     <main>
       <ToastHost onOpenToday={() => setTab('today')} />
-      {tab === 'today' && <div className="mx-auto max-w-xl px-4 pt-4"><ReminderPrompt /></div>}
+      {tab === 'today' && (
+        <div className="mx-auto max-w-xl px-4 pt-4">
+          <BackupBanner onGoToSettings={() => setTab('settings')} />
+          <ReminderPrompt />
+        </div>
+      )}
       {tab === 'today' ? <TodayView date={date} now={now} onEdit={onEdit} />
         : tab === 'upcoming' ? <UpcomingView date={date} onEdit={onEdit} />
         : tab === 'dashboard' ? <DashboardView now={now} />

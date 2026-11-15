@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { updateSettings } from '../../db/settingsRepo'
+import { BackupSection } from '../backup/BackupSection'
 import { getPermission, requestPermission, type PermissionState } from '../reminders/notify'
 import { useInstallPrompt } from './useInstallPrompt'
 import { useSettings } from './useSettings'
@@ -26,6 +27,8 @@ export function SettingsView() {
   return (
     <section aria-labelledby="settings-h" className="mx-auto max-w-xl space-y-6 p-4 pb-28">
       <h1 id="settings-h" className="text-2xl font-semibold">Settings</h1>
+
+      <BackupSection />
 
       <section aria-labelledby="install-h" className={card}>
         <h2 id="install-h" className="mb-2 text-lg font-semibold">Install</h2>
