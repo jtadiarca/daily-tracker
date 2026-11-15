@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { clearAllData, hasSnapshot, previewImport, undoImport, type ImportPreview, type ImportResult } from '../../db/backup'
 import { skippedCount } from '../../lib/merge'
 import { exportBackup } from './exportFile'
+import { GoogleDriveSection } from './GoogleDriveSection'
 import { ImportDialog } from './ImportDialog'
 import { useBackupInfo } from './useBackupInfo'
 
@@ -37,10 +38,15 @@ export function BackupSection() {
       setMsg({ kind: 'error', text: 'Please choose a .json backup file.' })
       return
     }
-    if (file.size > LARGE_FILE_BYTES &&
-      !window.confirm(`This file is ${(file.size / 1048576).toFixed(1)} MB, much larger than a normal backup. Importing it may be slow. Continue?`)) return
+    await importText(() => file.text(), file.size)
+  }
+
+  // Shared by file import and Google Drive restore: size check, validation, then the preview dialog.
+  const importText = async (read: () => Promise<string>, sizeBytes: number) => {
+    if (sizeBytes > LARGE_FILE_BYTES &&
+      !window.confirm(`This file is ${(sizeBytes / 1048576).toFixed(1)} MB, much larger than a normal backup. Importing it may be slow. Continue?`)) return
     try {
-      const res = await previewImport(await file.text())
+      const res = await previewImport(await read())
       if (res.ok) setPreview(res.preview)
       else setMsg({ kind: 'error', text: res.error })
     } catch (e) { fail(e) }
@@ -77,7 +83,7 @@ export function BackupSection() {
   return (
     <section aria-labelledby="backup-h" className="card">
       <h2 id="backup-h" className="mb-2 text-xl">Backup and transfer</h2>
-      <p className="mb-3 text-sm text-on-surface-variant">Export a backup file on one device and import it on another. Your data never leaves your devices.</p>
+      <p className="mb-3 text-sm text-on-surface-variant">Export a backup file on one device and import it on another. Your data stays on your devices unless you choose to save a backup to Google Drive.</p>
       <p className="mb-3">Last exported: <strong>{info?.lastExportedAt ? format(new Date(info.lastExportedAt), 'PPP p') : 'never'}</strong></p>
 
       <div className="flex flex-wrap gap-2">
@@ -92,6 +98,8 @@ export function BackupSection() {
         onDrop={e => { e.preventDefault(); setDragging(false); void handleFile(e.dataTransfer.files[0]) }}>
         Or drag a backup file here
       </div>
+
+      <GoogleDriveSection onMessage={setMsg} onImportText={(text, size) => importText(async () => text, size)} />
 
       {msg && <p role={msg.kind === 'error' ? 'alert' : 'status'} className={`mt-3 ${msg.kind === 'error' ? 'text-error' : ''}`}>{msg.text}</p>}
       {canUndo && (

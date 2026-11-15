@@ -15,7 +15,7 @@ A personal daily to-do app that works offline and keeps all of its data on your 
 - **Reminders:** spoken aloud first (beep only if speech fails), plus a system notification or an in-app toast. See [docs/reminders.md](docs/reminders.md).
 - **Upcoming:** the next 14 days.
 - **Dashboard:** today's progress ring, completion rate chart (7 days, 30 days or a custom range), current and best streak, and a missed list with "Mark done late" and "Reschedule to today". A category filter narrows every number on the page to one category (or No category), and a "By category" card shows the completion rate of each category in the range. The Dashboard keeps its own filter, separate from Today and Upcoming.
-- **Settings:** install, default reminder, notification permission, 12 or 24 hour time (12 hour by default), backup and transfer.
+- **Settings:** install, default reminder, notification permission, 12 or 24 hour time (12 hour by default), backup and transfer (file or Google Drive).
 - **Design:** Material 3 color roles, shapes and components, with light and dark themes that follow the system setting.
 - **Adaptive layout:** follows Material 3 window sizes, and switches when you rotate the device or resize the window.
   - Under 600px wide (phones held upright): bottom navigation bar, floating + button, and the task form as a bottom sheet.
@@ -131,6 +131,55 @@ After deploying, open the site on each device, use the browser's Install option 
 5. If something looks wrong, press Undo import. It stays available until you next open the app, and it also removes changes made since the import.
 
 Export from every device regularly. A banner appears after 14 days without an export.
+
+## Google Drive backup (optional)
+
+Settings, Backup and transfer, has **Save to Google Drive** and **Restore from Google Drive**.
+
+- **Sign-in:** the first time, Google's sign-in popup asks you to pick your account and allow access. The app asks only for the `drive.file` permission, so it can see the files it saves and nothing else in your Drive.
+- **Save:** uploads a backup named `daily-tracker-backup-YYYY-MM-DD-HHmm.json` into a **Daily Tracker backups** folder, created on first use. It also counts as an export for the 14-day reminder.
+- **Restore:** lists the backups the app saved, newest first. Picking one goes through the same preview, Merge or Replace, and Undo as a file import.
+- **Moving devices:** save on device A, restore on device B, signed in to the same Google account.
+- **Sign-in lasts until you reload or close the app.** The access token is kept in memory only, never stored or backed up. Use **Sign out** or **Use another account** to switch.
+- **Limits:**
+  - Google Drive needs an internet connection.
+  - Files you upload to the folder yourself (for example from Drive's website) won't show in the list, because `drive.file` only covers files this app created. Import those with **Import data** instead.
+
+### One-time setup: get a Google client ID
+
+Google requires every app that signs in to be registered. You do this once, and it's free.
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com/) and create a project, for example "Daily Tracker".
+2. **Turn on the Drive API:** APIs & Services, Library, search for **Google Drive API**, then Enable.
+3. **Consent screen:** open **Google Auth Platform** (in older consoles, APIs & Services, OAuth consent screen).
+   - App name "Daily Tracker", your email as the support and developer contact.
+   - Audience **External**.
+   - Under **Data access**, add the scope `.../auth/drive.file`.
+   - Under **Audience**, add your own Google account (and anyone else who will use the app) as a **test user**. While the app is in testing mode, only test users can sign in.
+4. **Client ID:** Clients (or Credentials), **Create client**, type **Web application**. Under **Authorized JavaScript origins** add every address you open the app from:
+   - `http://localhost:5173` (`npm run dev`)
+   - `http://localhost:4173` (`npm run preview` and the Windows service)
+   - your deployed site, for example `https://your-app.netlify.app`
+
+   No redirect URIs are needed. Copy the **Client ID**. It ends in `.apps.googleusercontent.com`.
+5. Put it in the `.env` file in the project folder, and commit it:
+   ```
+   VITE_GOOGLE_CLIENT_ID=1234567890-abc123.apps.googleusercontent.com
+   ```
+   - **Committing is safe.** A client ID isn't a secret: it ends up in the built app anyway. Google only accepts sign-ins from the authorized origins (step 4), and from test users while the app is in testing mode.
+   - **Every machine gets it automatically.** Because `.env` is committed, every machine that clones or pulls the repo builds the app with the ID, including `setup.ps1` on a new PC and Netlify or Vercel. Nothing extra to copy.
+   - **Per-machine override:** to use a different ID on one machine, put it in `.env.local`. That file is ignored by git and overrides `.env`.
+6. Restart `npm run dev`, or rebuild with `npm run build`. For the Windows service, rerun `setup.ps1 -Service` so it rebuilds.
+
+**Phones and other devices:** Google only allows sign-in from `https://` addresses or `localhost`.
+- **Can't sign in:** opening the app through a PC's network address (for example `http://192.168.1.20:5173`).
+- **To use Google Drive on a phone:** use a deployed `https://` copy of the app (see Deploy), and add that address to the authorized origins.
+
+**Sign-in troubleshooting:**
+- **"Access blocked" or "app has not completed verification":** add your account as a test user (step 3).
+- **"origin_mismatch":** the address in the browser isn't in Authorized JavaScript origins (step 4). `localhost` and `127.0.0.1` count as different addresses.
+- **Nothing happens when you click:** allow popups for the site.
+- **"Google Drive API has not been used in project…":** enable the API (step 2) and wait a minute.
 
 ## How merging works
 
