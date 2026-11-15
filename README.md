@@ -32,7 +32,7 @@ If you already have the project, double-click `setup.cmd`, or run this in PowerS
 powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 ```
 
-Options: `-Dir C:\dev\daily-tracker` (where to clone), `-SkipTests`, `-Build` (also run a production build), `-NoStart` (do not start the app), `-RepoUrl <url>`.
+Options: `-Dir C:\dev\daily-tracker` (where to clone), `-SkipTests`, `-Build` (also run a production build), `-NoStart` (do not start the app), `-RepoUrl <url>`, `-Service`, `-RemoveService` and `-Port` (see the next section).
 
 If the project is not on the machine yet and the repository is public, this one line downloads and runs the script:
 
@@ -43,6 +43,25 @@ powershell -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.c
 If the repository is private, open `scripts/setup.ps1` on GitHub, choose Raw, save it, and run it with the command above. Git will ask you to sign in when it clones.
 
 Notes: Windows may show a permission prompt while winget installs Git and Node. The script needs winget, which comes with the Microsoft Store's App Installer on Windows 10 and 11. On macOS or Linux, install Git and Node.js 20 or newer yourself, then follow the steps below.
+
+## Start the app automatically when Windows boots (optional)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Service
+```
+
+Windows asks for administrator permission. The script then builds the app, installs NSSM (a small tool that lets Windows run a normal program as a service) with winget, and registers a service named `DailyTaskTracker` that starts at boot. It serves the built app with `vite preview` at `http://localhost:4173` (change it with `-Port`). The server listens on `127.0.0.1` only, so other computers cannot reach it. Logs are in `C:\ProgramData\DailyTaskTracker`.
+
+- **Update:** `git pull`, then run the same command again. It rebuilds and replaces the service.
+- **Remove:** `powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -RemoveService`.
+- **Check:** `Get-Service DailyTaskTracker`.
+
+Things to know:
+
+- **Separate data:** a browser keeps data per address and port, so `http://localhost:4173` starts empty. Export a backup from the old address (for example `http://localhost:5173`) and import it here.
+- **Reminders need the app open:** the service only serves the files. Reminders run inside the page, so open the app (or the installed app window) and keep it open. Installing it from the browser's Install button on `http://localhost:4173` works because localhost counts as a secure context.
+- **Not for sharing:** `vite preview` is meant for local use, not as a public production server. Use Netlify or Vercel if you want other devices to reach the app.
+- **Folder choice:** keep the project in a plain folder such as `C:\dev`, not in OneDrive, so the service can always read it.
 
 ## Run it
 
@@ -103,7 +122,7 @@ Reminders are scheduled with timers while the app is open, and re-planned whenev
 ## Project layout
 
 ```
-scripts/setup.ps1   one-command setup for a new Windows PC (setup.cmd is a double-click launcher)
+scripts/setup.ps1   one-command setup for a new Windows PC, with an optional boot-time service (setup.cmd is a double-click launcher)
 src/db              Dexie schema, repositories, backup and import code
 src/lib             pure, tested logic: dates, recurrence, status, stats, reminders, merge, schema, migrations
 src/features        today, upcoming, dashboard, settings, reminders, backup
