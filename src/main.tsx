@@ -3,8 +3,5 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => { /* reminders fall back to in-app alerts */ }) })
-}
-
+// The service worker is registered by vite-plugin-pwa (see vite.config.ts).
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>)
