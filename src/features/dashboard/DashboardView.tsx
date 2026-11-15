@@ -70,7 +70,7 @@ export function DashboardView({ now }: { now: Date }) {
   const tipStyle = { backgroundColor: 'rgb(var(--md-surface-container-high))', border: 'none', borderRadius: 8, color: 'rgb(var(--md-on-surface))' }
 
   return (
-    <section aria-labelledby="dash-h" className="mx-auto max-w-xl space-y-6 p-4 pb-32">
+    <section aria-labelledby="dash-h" className="page space-y-6">
       <h1 id="dash-h" className="text-3xl">Dashboard</h1>
       {error && <p role="alert" className="text-error">{error}</p>}
       <div>
@@ -78,6 +78,9 @@ export function DashboardView({ now }: { now: Date }) {
         {filterLabel && <p className="-mt-2 text-sm text-on-surface-variant">Showing only {filterLabel}. Progress, streaks, the chart and missed tasks count these tasks only.</p>}
       </div>
 
+      {/* Wide screens: progress, streaks, range and chart on the left; categories and missed tasks on the right. */}
+      <div className="cols-2">
+      <div className="space-y-6">
       <section aria-labelledby="today-h" className="card">
         <h2 id="today-h" className="mb-3 text-xl">Today</h2>
         {!todayStat ? <p>Loading…</p> : todayStat.total === 0 ? <p className="text-on-surface-variant">No tasks scheduled today.</p> : (
@@ -85,7 +88,7 @@ export function DashboardView({ now }: { now: Date }) {
             <ProgressRing done={todayStat.done} total={todayStat.total} />
             <div>
               <p>{todayStat.done} of {todayStat.total} done</p>
-              <p className="text-on-surface-variant">{todayStat.missed} missed{todayStat.missed > 0 ? ' (see the Missed tasks list below)' : ''}</p>
+              <p className="text-on-surface-variant">{todayStat.missed} missed{todayStat.missed > 0 ? ' (see Missed tasks)' : ''}</p>
             </div>
           </div>
         )}
@@ -149,6 +152,9 @@ export function DashboardView({ now }: { now: Date }) {
         )}
       </section>
 
+      </div>
+
+      <div className="space-y-6">
       {showBreakdown && (
         <section aria-labelledby="bycat-h" className="card">
           <h2 id="bycat-h" className="mb-1 text-xl">By category</h2>
@@ -197,6 +203,8 @@ export function DashboardView({ now }: { now: Date }) {
           </ul>
         )}
       </section>
+      </div>
+      </div>
     </section>
   )
 }

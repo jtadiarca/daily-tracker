@@ -13,18 +13,26 @@ const tabs: { id: Tab; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' }, { id: 'settings', label: 'Settings' },
 ]
 
-// Material 3 navigation bar: icon in a pill indicator when active, label underneath.
-export function TabBar({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
+const ADD_ICON = 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z'
+
+// Material 3 navigation. On phones in portrait it is a bottom navigation bar (icon in a pill when
+// active, label underneath). From 600px wide (landscape phones, tablets, desktops) it becomes a
+// navigation rail on the left: the add button at the top with the tabs directly below it.
+export function TabBar({ tab, onChange, onAdd }: { tab: Tab; onChange: (t: Tab) => void; onAdd: () => void }) {
   return (
-    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 bg-surface-container">
-      <ul className="mx-auto flex max-w-xl">
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 bg-surface-container medium:inset-y-0 medium:right-auto medium:flex medium:w-20 medium:flex-col medium:items-center medium:gap-6 medium:overflow-y-auto medium:py-6 short:gap-2 short:py-3">
+      <button aria-label="Add task" onClick={onAdd}
+        className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-m3-lg bg-primary-container text-on-primary-container shadow-m3-1 transition hover:shadow-m3-2 medium:flex short:h-12 short:w-12">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d={ADD_ICON} /></svg>
+      </button>
+      <ul className="mx-auto flex max-w-xl medium:mx-0 medium:flex-col medium:gap-3 short:gap-1">
         {tabs.map(t => {
           const active = tab === t.id
           return (
-            <li key={t.id} className="flex-1">
+            <li key={t.id} className="flex-1 medium:flex-none">
               <button onClick={() => onChange(t.id)} aria-current={active ? 'page' : undefined}
-                className="flex w-full flex-col items-center gap-1 pb-4 pt-3">
-                <span className={`flex h-8 w-16 items-center justify-center rounded-full transition-colors ${active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'}`}>
+                className="flex w-full flex-col items-center gap-1 pb-4 pt-3 medium:w-20 medium:py-1 short:py-0.5">
+                <span className={`flex h-8 w-16 items-center justify-center rounded-full transition-colors medium:w-14 ${active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'}`}>
                   <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d={ICONS[t.id]} /></svg>
                 </span>
                 <span className={`text-xs font-medium ${active ? 'text-on-surface' : 'text-on-surface-variant'}`}>{t.label}</span>

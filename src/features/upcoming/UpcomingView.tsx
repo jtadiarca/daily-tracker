@@ -60,12 +60,13 @@ export function UpcomingView({ date, categories, view, onEdit }: { date: string;
   const label = (d: string) => (d === date ? 'Today' : d === addDaysStr(date, 1) ? 'Tomorrow' : format(parseDateStr(d), 'EEEE, MMM d'))
 
   return (
-    <section aria-labelledby="up-h" className="mx-auto max-w-xl space-y-5 p-4 pb-32">
+    <section aria-labelledby="up-h" className="page space-y-5">
       <h1 id="up-h" className="text-3xl">Upcoming</h1>
       <p className="text-sm text-on-surface-variant">The next {DAYS_AHEAD} days. Tap a task to edit it.</p>
       <CategoryFilter categories={categories} view={view} />
       {data && groups.length === 0 && <p className="text-on-surface-variant">{filter === 'all' ? `Nothing scheduled in the next ${DAYS_AHEAD} days.` : `Nothing in this category in the next ${DAYS_AHEAD} days.`}</p>}
-      {groups.map(g => (
+      {/* Days run down one column on phones and fill two columns on wide screens. */}
+      <div className="cols-2">{groups.map(g => (
         <section key={g.date} aria-labelledby={`up-${g.date}`}>
           <h2 id={`up-${g.date}`} className="section-title mb-2">{label(g.date)}</h2>
           {byCategory
@@ -76,7 +77,7 @@ export function UpcomingView({ date, categories, view, onEdit }: { date: string;
               </div>))
             : renderList(g.items, true)}
         </section>
-      ))}
+      ))}</div>
     </section>
   )
 }

@@ -14,9 +14,14 @@ A personal daily to-do app that works offline and keeps all of its data on your 
 - **Status:** done, upcoming and missed are derived, never stored. Untimed tasks only become missed after local midnight.
 - **Reminders:** spoken aloud first (beep only if speech fails), plus a system notification or an in-app toast. See [docs/reminders.md](docs/reminders.md).
 - **Upcoming:** the next 14 days.
-- **Dashboard:** today's progress ring, completion rate chart (7 days, 30 days or a custom range), current and best streak, and a missed list with "Mark done late" and "Reschedule to today".
+- **Dashboard:** today's progress ring, completion rate chart (7 days, 30 days or a custom range), current and best streak, and a missed list with "Mark done late" and "Reschedule to today". A category filter narrows every number on the page to one category (or No category), and a "By category" card shows the completion rate of each category in the range. The Dashboard keeps its own filter, separate from Today and Upcoming.
 - **Settings:** install, default reminder, notification permission, 12 or 24 hour time (12 hour by default), backup and transfer.
 - **Design:** Material 3 color roles, shapes and components, with light and dark themes that follow the system setting.
+- **Adaptive layout:** follows Material 3 window sizes, and switches when you rotate the device or resize the window.
+  - Under 600px wide (phones held upright): bottom navigation bar, floating + button, and the task form as a bottom sheet.
+  - 600px and wider (phones on their side, tablets, laptops): a navigation rail on the left with the + button at its top, so lists keep the full screen height. The task form opens as a centered dialog that scrolls on short screens.
+  - 840px and wider: two columns. Today shows Scheduled and Anytime (or the category groups) side by side, Upcoming lays the days out in two columns, the Dashboard puts progress, streaks and the chart on the left and the category breakdown and missed tasks on the right, and Settings flows its cards into two columns.
+  - The breakpoints are the `medium`, `expanded` and `short` screens in `tailwind.config.js`, plus the `.page`, `.page-width` and `.cols-2` classes in `src/index.css`.
 
 ## Set up on a new Windows PC
 
@@ -149,8 +154,8 @@ Reminders are scheduled with timers while the app is open, and re-planned whenev
 scripts/setup.ps1   one-command setup for a new Windows PC, with optional boot-time service and login shortcut (setup.cmd is a double-click launcher)
 src/db              Dexie schema, repositories, backup and import code
 src/lib             pure, tested logic: dates, recurrence, status, stats, reminders, merge, schema, migrations
-src/features        today, upcoming, dashboard, settings, reminders, backup
-src/components      shared components
+src/features        today, upcoming, dashboard, settings, reminders, backup, categories
+src/components      shared components (TabBar is the bottom bar on phones and the side rail on wider screens)
 src/sw.ts           service worker (precaching, offline shell, notification click)
 ```
 
@@ -173,3 +178,5 @@ Backups carry a `schemaVersion`. To ship version 2: bump `CURRENT_SCHEMA_VERSION
 - Reload, and go offline: the app still works with your data.
 - Export on device A, import on device B, and see the same tasks, history and streaks.
 - Make different changes on both devices, import in both directions, and confirm both end up identical.
+- Give tasks categories, then on the Dashboard pick a category and confirm the ring, streaks, chart and missed list only count that category.
+- Rotate a phone (or narrow and widen a desktop window): the bottom bar turns into a side rail at 600px, two columns appear at 840px, and the task form stays usable in landscape.

@@ -15,7 +15,7 @@ export function ToastHost({ onOpenToday }: { onOpenToday: () => void }) {
   }, [])
   const dismiss = (id: string) => setToasts(cur => cur.filter(x => x.id !== id))
   return (
-    <div role="status" aria-live="polite" className="fixed inset-x-3 top-3 z-50 mx-auto max-w-xl space-y-2">
+    <div role="status" aria-live="polite" className="fixed inset-x-3 top-3 z-50 mx-auto max-w-xl space-y-2 medium:left-24">
       {toasts.map(t => (
         <div key={t.id} className="flex items-center gap-1 rounded-m3-xs bg-inverse-surface p-4 text-inverse-on-surface shadow-m3-3">
           <div className="min-w-0 flex-1"><p className="text-sm font-medium">Reminder: {t.title}</p><p className="text-sm opacity-80">{t.body}</p></div>

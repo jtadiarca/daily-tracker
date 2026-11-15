@@ -35,7 +35,7 @@ export function TodayView({ date, now, categories, view, onEdit }: { date: strin
   const anytime = visible.filter(i => !i.slot).sort((a, b) => a.task.createdAt.localeCompare(b.task.createdAt))
   // Inside a category heading the tasks stay in time order, with tasks that have no time last.
   const groups = byCategory ? groupByCategory([...timed, ...anytime], categories) : []
-  return <section className="mx-auto max-w-xl p-4 pb-32" aria-labelledby="today-heading">
+  return <section className="page" aria-labelledby="today-heading">
     <h1 id="today-heading" className="mb-4 text-3xl">Today</h1>
     <form className="mb-4" onSubmit={e => { e.preventDefault(); if (title.trim()) void run(async () => { await createTask({ title, startDate: date, categoryId: categoryForFilter(filter, categories) }); setTitle('') }) }}>
       <label htmlFor="quick" className="sr-only">Quick add task</label><input id="quick" value={title} onChange={e => setTitle(e.target.value)} placeholder="Add a task and press Enter" className="w-full rounded-full bg-surface-container-high px-5 py-3 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary" />
@@ -44,12 +44,13 @@ export function TodayView({ date, now, categories, view, onEdit }: { date: strin
     {error && <p role="alert" className="mb-2 text-error">{error}</p>}
     {!items && <p className="text-on-surface-variant">Loading tasks…</p>}{items?.length === 0 && <p className="text-on-surface-variant">Nothing yet. Add your first task.</p>}
     {items && items.length > 0 && visible.length === 0 && <p className="text-on-surface-variant">No tasks in this category today.</p>}
+    {/* On wide screens the category groups (or Scheduled and Anytime) sit side by side. */}
     {byCategory
-      ? groups.map((g, i) => <section key={g.key} aria-labelledby={`today-cat-${g.key}`} className={i > 0 ? 'mt-6' : ''}><h2 id={`today-cat-${g.key}`} className="section-title mb-2">{g.category?.name ?? 'No category'}</h2>{renderRows(g.items, false)}</section>)
-      : <>
-        {timed.length > 0 && <><h2 className="section-title mb-2">Scheduled</h2>{renderRows(timed, true)}</>}
-        {anytime.length > 0 && <><h2 className="section-title mb-2 mt-6">Anytime</h2>{renderRows(anytime, true)}</>}
-      </>}
+      ? <div className="cols-2">{groups.map(g => <section key={g.key} aria-labelledby={`today-cat-${g.key}`}><h2 id={`today-cat-${g.key}`} className="section-title mb-2">{g.category?.name ?? 'No category'}</h2>{renderRows(g.items, false)}</section>)}</div>
+      : <div className="cols-2">
+        {timed.length > 0 && <section aria-labelledby="today-scheduled"><h2 id="today-scheduled" className="section-title mb-2">Scheduled</h2>{renderRows(timed, true)}</section>}
+        {anytime.length > 0 && <section aria-labelledby="today-anytime"><h2 id="today-anytime" className="section-title mb-2">Anytime</h2>{renderRows(anytime, true)}</section>}
+      </div>}
     <DeleteDialog task={deleting} date={date} onClose={() => setDeleting(null)} />
   </section>
 }

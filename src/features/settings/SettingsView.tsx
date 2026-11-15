@@ -24,8 +24,10 @@ export function SettingsView() {
   }, [])
 
   return (
-    <section aria-labelledby="settings-h" className="mx-auto max-w-xl space-y-6 p-4 pb-32">
-      <h1 id="settings-h" className="text-3xl">Settings</h1>
+    <section aria-labelledby="settings-h" className="page">
+      <h1 id="settings-h" className="mb-6 text-3xl">Settings</h1>
+      {/* One column on phones; on wide screens the cards flow into two columns like a newspaper. */}
+      <div className="expanded:columns-2 expanded:gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid">
 
       <CategoryManager />
 
@@ -68,6 +70,7 @@ export function SettingsView() {
           ))}
         </fieldset>
       </section>
+      </div>
     </section>
   )
 }

@@ -17,6 +17,14 @@ export default {
   darkMode: 'media',
   theme: {
     extend: {
+      // Material 3 window size classes. "medium" (600px+) covers phones in landscape and tablets:
+      // the bottom bar becomes a side rail. "expanded" (840px+) gets two-column layouts.
+      // "short" is a landscape phone, where vertical space is tight.
+      screens: {
+        medium: { raw: '(min-width: 600px)' },
+        expanded: { raw: '(min-width: 840px)' },
+        short: { raw: '(max-height: 500px)' },
+      },
       colors: Object.fromEntries(roles.map(r => [r, role(r)])),
       borderRadius: { 'm3-xs': '4px', 'm3-sm': '8px', 'm3-md': '12px', 'm3-lg': '16px', 'm3-xl': '28px' },
       boxShadow: {
