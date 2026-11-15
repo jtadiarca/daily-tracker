@@ -1,47 +1,49 @@
-import { useEffect, useState } from 'react'
-import type { Task } from '../db/types'
+import { useEffect, useRef, useState } from 'react'
+import type { Task, RecurrenceType } from '../db/types'
 import { createTask, updateTask } from '../db/repo'
-
-export function TaskSheet({ open, task, date, onClose }:
-  { open: boolean; task: Task | null; date: string; onClose: () => void }) {
+import { dayOfWeek } from '../lib/recurrence'
+import { deriveStatus } from '../lib/status'
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+export function TaskSheet({ open, task, date, onClose }: { open: boolean; task: Task | null; date: string; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null)
   const [title, setTitle] = useState('')
   const [notes, setNotes] = useState('')
-  const [d, setD] = useState(date)
-
+  const [startDate, setStartDate] = useState(date)
+  const [time, setTime] = useState('')
+  const [type, setType] = useState<RecurrenceType>('none')
+  const [days, setDays] = useState<number[]>([])
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
   useEffect(() => {
-    if (!open) return
-    setTitle(task?.title ?? ''); setNotes(task?.notes ?? ''); setD(task?.startDate ?? date)
-  }, [open, task, date])
-
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    if (open) window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [open, onClose])
-
-  if (!open) return null
+    if (!open) { dialog.current?.close(); return }
+    setTitle(task?.title ?? ''); setNotes(task?.notes ?? ''); setStartDate(task?.startDate ?? date)
+    setTime(task?.time ?? ''); setType(task?.recurrence.type ?? 'none'); setDays(task?.recurrence.daysOfWeek ?? []); setError('')
+    if (!dialog.current?.open) dialog.current?.showModal()
+  }, [open, task])
+  const field = 'w-full rounded-lg border border-slate-400 bg-white px-3 py-2 dark:bg-slate-800'
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
-    if (task) await updateTask(task.id, { title: title.trim(), notes: notes.trim() || undefined, startDate: d })
-    else await createTask({ title, notes, startDate: d })
-    onClose()
+    if (!title.trim() || !startDate || saving) return
+    setSaving(true); setError('')
+    try {
+      const recurrence = { ...task?.recurrence, type, daysOfWeek: type === 'weekly' ? (days.length ? days : [dayOfWeek(startDate)]) : undefined }
+      const data = { title: title.trim(), notes: notes.trim() || undefined, startDate, time: time || undefined, recurrence }
+      if (task) await updateTask(task.id, data); else await createTask(data)
+      onClose()
+    } catch (e) { setError(e instanceof Error ? e.message : 'Save failed') } finally { setSaving(false) }
   }
-  const field = 'w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2'
-  return (
-    <div className="fixed inset-0 z-30 flex items-end bg-black/40" onClick={onClose}>
-      <form role="dialog" aria-modal="true" aria-label={task ? 'Edit task' : 'Add task'}
-        onClick={e => e.stopPropagation()} onSubmit={save}
-        className="w-full max-w-xl mx-auto rounded-t-2xl bg-white dark:bg-slate-900 p-4 space-y-3">
-        <h2 className="text-lg font-semibold">{task ? 'Edit task' : 'New task'}</h2>
-        <label className="block">Title<input autoFocus required value={title} onChange={e => setTitle(e.target.value)} className={field} /></label>
-        <label className="block">Notes<textarea value={notes} onChange={e => setNotes(e.target.value)} className={field} /></label>
-        <label className="block">Date<input type="date" value={d} onChange={e => setD(e.target.value)} className={field} /></label>
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-4 py-2">Cancel</button>
-          <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-700 text-white">Save</button>
-        </div>
-      </form>
-    </div>
-  )
+  return <dialog ref={dialog} aria-labelledby="task-heading" onCancel={e => { e.preventDefault(); if (!saving) onClose() }} className="fixed bottom-0 top-auto m-0 mx-auto max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-t-2xl bg-white p-4 text-slate-900 backdrop:bg-black/50 dark:bg-slate-900 dark:text-slate-100">
+    <form onSubmit={save} className="space-y-3"><h2 id="task-heading" className="text-lg font-semibold">{task ? 'Edit task' : 'New task'}</h2>
+    <label className="block">Title<input autoFocus required value={title} onChange={e => setTitle(e.target.value)} className={field} /></label>
+    <label className="block">Notes<textarea value={notes} onChange={e => setNotes(e.target.value)} className={field} /></label>
+    <label className="block">{type === 'none' ? 'Date' : 'Starts'}<input type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} className={field} /></label>
+    <label className="block">Time (optional)<input type="time" value={time} onChange={e => setTime(e.target.value)} className={field} /></label>
+    {time && <button type="button" className="underline" onClick={() => setTime('')}>Clear time</button>}
+    {time && deriveStatus({ date: startDate, time, done: false, now: new Date() }) === 'missed' && <p role="status">This time has passed. The occurrence will show as missed unless completed.</p>}
+    <label className="block">Repeat<select className={field} value={type} onChange={e => setType(e.target.value as RecurrenceType)}><option value="none">Does not repeat</option><option value="daily">Daily</option><option value="weekdays">Weekdays (Mon–Fri)</option><option value="weekly">Weekly on chosen days</option></select></label>
+    {type === 'weekly' && <fieldset><legend>On these days</legend><div className="flex flex-wrap gap-3">{DAYS.map((label, day) => <label key={day} className="flex items-center gap-1 py-2"><input type="checkbox" checked={days.includes(day)} onChange={() => setDays(current => current.includes(day) ? current.filter(d => d !== day) : [...current, day].sort())} />{label}</label>)}</div><p className="text-sm">If none are selected, uses the start date’s weekday.</p></fieldset>}
+    {task && task.recurrence.type !== 'none' && <p className="text-sm">Edits apply to the whole series, including historical labels and schedules. Existing completion records remain unchanged.</p>}
+    {error && <p role="alert">{error}</p>}<div className="flex justify-end gap-2"><button type="button" disabled={saving} className="px-4 py-2" onClick={onClose}>Cancel</button><button type="submit" disabled={saving} className="rounded bg-indigo-700 px-4 py-2 text-white">{saving ? 'Saving…' : 'Save'}</button></div>
+    </form>
+  </dialog>
 }
