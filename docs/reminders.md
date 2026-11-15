@@ -4,9 +4,11 @@
   or settings change, when the day rolls over, and when the tab regains focus.
 - If the app opens during a reminder's window (after its fire time, up to 5 minutes after the due time),
   the reminder fires immediately. Each occurrence fires only once (tracked in localStorage).
-- With notification permission granted, reminders use the service worker (`public/sw.js`) so a click opens
-  the app on Today. If permission is denied or unsupported, an in-app toast is shown and the reminder is read
-  aloud with the browser's text-to-speech. A short beep is used only if speech is unavailable.
+- Every reminder is read aloud first with the browser's text-to-speech. A short beep plays only if speech is
+  unsupported or blocked.
+- With notification permission granted, a system notification is also shown through the service worker
+  (`public/sw.js`), and clicking it opens the app on Today. If permission is denied or unsupported, an in-app
+  toast is shown instead.
 - Speech needs the user to have interacted with the page first (Chrome since version 71; iOS needs a tap).
   The app unlocks speech on the first tap or key press. If it still cannot speak, it falls back to the beep.
 - Reminder offset values: null = use default setting, -1 = none, 0 = at time, N = N minutes before.

@@ -17,6 +17,10 @@ export async function requestPermission(): Promise<PermissionState> {
 
 export async function deliver(r: Reminder) {
   const body = `Due at ${r.time}`
+
+  // Always read the reminder aloud first. The beep is only a fallback if speech is unsupported or blocked.
+  if (!speak(`Reminder. ${r.title}. Due at ${formatTime(r.time, '12h')}.`)) playBeep()
+
   if (getPermission() === 'granted') {
     try {
       const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined
@@ -27,8 +31,7 @@ export async function deliver(r: Reminder) {
       const n = new Notification(r.title, { body, tag: r.id })
       n.onclick = () => { window.focus(); window.dispatchEvent(new Event('app:open-today')); n.close() }
       return
-    } catch { /* fall through to the in-app alert */ }
+    } catch { /* fall through to the in-app toast */ }
   }
   emitToast({ title: r.title, body })
-  if (!speak(`Reminder. ${r.title}. Due at ${formatTime(r.time, '12h')}.`)) playBeep()
 }
