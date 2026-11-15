@@ -4,10 +4,15 @@
   or settings change, when the day rolls over, and when the tab regains focus.
 - If the app opens during a reminder's window (after its fire time, up to 5 minutes after the due time),
   the reminder fires immediately. Each occurrence fires only once (tracked in localStorage).
-- Every reminder is read aloud first with the browser's text-to-speech. A short beep plays only if speech is
-  unsupported or blocked.
+- Every reminder is read aloud 3 times (`REMINDER_REPEATS` in `src/lib/voice.ts`) with the browser's text-to-speech,
+  with a short pause between. A short beep plays instead if speech is unsupported, blocked, or turned off.
+- Settings, Reminder voice: turn speech on or off, pick any voice the browser offers, and set speed (0.5x to 2x)
+  and pitch, with a Test voice button. Saved per device in localStorage (`dtt.voicePrefs`), never in backups,
+  because each device has different voices. If the chosen voice is missing (for example an online voice while
+  offline), the browser default is used. Edge offers the most natural voices on Windows ("Online (Natural)").
+- Reminders due at the same moment are queued, so each one is read in full.
 - With notification permission granted, a system notification is also shown through the service worker
-  (`public/sw.js`), and clicking it opens the app on Today. If permission is denied or unsupported, an in-app
+  (`src/sw.ts`), and clicking it opens the app on Today. If permission is denied or unsupported, an in-app
   toast is shown instead.
 - Speech needs the user to have interacted with the page first (Chrome since version 71; iOS needs a tap).
   The app unlocks speech on the first tap or key press. If it still cannot speak, it falls back to the beep.

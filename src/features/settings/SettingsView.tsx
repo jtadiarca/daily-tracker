@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { updateSettings } from '../../db/settingsRepo'
 import { BackupSection } from '../backup/BackupSection'
 import { CategoryManager } from '../categories/CategoryManager'
+import { VoiceSettings } from '../reminders/VoiceSettings'
 import { getPermission, requestPermission, type PermissionState } from '../reminders/notify'
 import { useInstallPrompt } from './useInstallPrompt'
 import { useSettings } from './useSettings'
@@ -58,6 +59,8 @@ export function SettingsView() {
         {perm === 'default' && <button className="btn-filled mt-3" onClick={async () => setPerm(await requestPermission())}>Turn on reminders</button>}
         <p className="mt-2 text-sm text-on-surface-variant">This permission belongs to this device and is never included in backups.</p>
       </section>
+
+      <VoiceSettings />
 
       <section aria-labelledby="time-h" className="card">
         <fieldset>

@@ -1,5 +1,6 @@
 import type { Reminder } from '../../lib/reminders'
 import { formatTime } from '../../lib/time'
+import { REMINDER_REPEATS } from '../../lib/voice'
 import { emitToast, playBeep, speak } from './toast'
 
 export type PermissionState = 'unsupported' | NotificationPermission
@@ -19,7 +20,7 @@ export async function deliver(r: Reminder) {
   const body = `Due at ${r.time}`
 
   // Always read the reminder aloud first. The beep is only a fallback if speech is unsupported or blocked.
-  if (!speak(`Reminder. ${r.title}. Due at ${formatTime(r.time, '12h')}.`)) playBeep()
+  if (!speak(`Reminder. ${r.title}. Due at ${formatTime(r.time, '12h')}.`, REMINDER_REPEATS)) playBeep()
 
   if (getPermission() === 'granted') {
     try {
