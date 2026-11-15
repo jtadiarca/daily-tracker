@@ -7,8 +7,6 @@ import { ImportDialog } from './ImportDialog'
 import { useBackupInfo } from './useBackupInfo'
 
 const LARGE_FILE_BYTES = 10 * 1024 * 1024
-const card = 'rounded-xl bg-white p-4 shadow-sm dark:bg-slate-800'
-const btn = 'rounded border border-slate-400 px-4 py-2'
 type Msg = { kind: 'ok' | 'error'; text: string } | null
 
 export function BackupSection() {
@@ -77,44 +75,44 @@ export function BackupSection() {
   }
 
   return (
-    <section aria-labelledby="backup-h" className={card}>
-      <h2 id="backup-h" className="mb-2 text-lg font-semibold">Backup and transfer</h2>
-      <p className="mb-3 text-sm">Export a backup file on one device and import it on another. Your data never leaves your devices.</p>
+    <section aria-labelledby="backup-h" className="card">
+      <h2 id="backup-h" className="mb-2 text-xl">Backup and transfer</h2>
+      <p className="mb-3 text-sm text-on-surface-variant">Export a backup file on one device and import it on another. Your data never leaves your devices.</p>
       <p className="mb-3">Last exported: <strong>{info?.lastExportedAt ? format(new Date(info.lastExportedAt), 'PPP p') : 'never'}</strong></p>
 
       <div className="flex flex-wrap gap-2">
-        <button className="rounded bg-indigo-700 px-4 py-2 text-white" onClick={() => void onExport()}>Export data</button>
-        <button className={btn} onClick={() => fileRef.current?.click()}>Import data</button>
+        <button className="btn-filled" onClick={() => void onExport()}>Export data</button>
+        <button className="btn-outlined" onClick={() => fileRef.current?.click()}>Import data</button>
         <input ref={fileRef} type="file" accept=".json,application/json" className="sr-only" tabIndex={-1} aria-label="Choose backup file"
           onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; void handleFile(f) }} />
       </div>
 
-      <div className={`mt-3 hidden rounded-lg border-2 border-dashed p-4 text-center text-sm sm:block ${dragging ? 'border-indigo-700' : 'border-slate-400'}`}
+      <div className={`mt-3 hidden rounded-m3-md border-2 border-dashed p-4 text-center text-sm text-on-surface-variant sm:block ${dragging ? 'border-primary bg-primary/10' : 'border-outline-variant'}`}
         onDragOver={e => { e.preventDefault(); setDragging(true) }} onDragLeave={() => setDragging(false)}
         onDrop={e => { e.preventDefault(); setDragging(false); void handleFile(e.dataTransfer.files[0]) }}>
         Or drag a backup file here
       </div>
 
-      {msg && <p role={msg.kind === 'error' ? 'alert' : 'status'} className="mt-3">{msg.text}</p>}
+      {msg && <p role={msg.kind === 'error' ? 'alert' : 'status'} className={`mt-3 ${msg.kind === 'error' ? 'text-error' : ''}`}>{msg.text}</p>}
       {canUndo && (
         <div className="mt-3">
-          <button className={btn} onClick={() => void onUndo()}>Undo import</button>
-          <p className="mt-1 text-sm">Available until you next open the app. It also removes changes made since the import.</p>
+          <button className="btn-tonal" onClick={() => void onUndo()}>Undo import</button>
+          <p className="mt-1 text-sm text-on-surface-variant">Available until you next open the app. It also removes changes made since the import.</p>
         </div>
       )}
 
-      <hr className="my-4 border-slate-300 dark:border-slate-600" />
+      <hr className="my-4 border-outline-variant" />
       {!clearOpen ? (
-        <button className="rounded border border-red-700 px-4 py-2 text-red-800 dark:text-red-300" onClick={() => setClearOpen(true)}>Clear all data…</button>
+        <button className="btn-outlined-error" onClick={() => setClearOpen(true)}>Clear all data…</button>
       ) : (
-        <form className="space-y-2" onSubmit={e => { e.preventDefault(); if (confirmText === 'DELETE') void onClear() }}>
-          <p role="alert">This permanently deletes every task, completion and setting on this device. Export a backup first if you might want them back.</p>
-          <label className="block">Type DELETE to confirm
-            <input value={confirmText} onChange={e => setConfirmText(e.target.value)} autoComplete="off" className="w-full rounded-lg border border-slate-400 bg-white px-3 py-2 dark:bg-slate-900" />
+        <form className="space-y-3" onSubmit={e => { e.preventDefault(); if (confirmText === 'DELETE') void onClear() }}>
+          <p role="alert" className="rounded-m3-sm bg-error-container p-3 text-on-error-container">This permanently deletes every task, completion and setting on this device. Export a backup first if you might want them back.</p>
+          <label className="field-label">Type DELETE to confirm
+            <input value={confirmText} onChange={e => setConfirmText(e.target.value)} autoComplete="off" className="field mt-1" />
           </label>
           <div className="flex gap-2">
-            <button type="submit" disabled={confirmText !== 'DELETE'} className="rounded bg-red-700 px-4 py-2 text-white disabled:opacity-50">Delete everything</button>
-            <button type="button" className="px-4 py-2" onClick={() => { setClearOpen(false); setConfirmText('') }}>Cancel</button>
+            <button type="submit" disabled={confirmText !== 'DELETE'} className="btn-filled-error">Delete everything</button>
+            <button type="button" className="btn-text" onClick={() => { setClearOpen(false); setConfirmText('') }}>Cancel</button>
           </div>
         </form>
       )}

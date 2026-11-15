@@ -8,13 +8,13 @@ export function ReminderPrompt() {
     window.addEventListener('focus', refresh)
     return () => window.removeEventListener('focus', refresh)
   }, [])
-  const box = 'mb-4 rounded-lg border border-slate-400 bg-white p-3 text-sm dark:bg-slate-800'
+  const box = 'mb-4 rounded-m3-md bg-secondary-container p-4 text-sm text-on-secondary-container'
   if (perm === 'granted') return null
   if (perm === 'default') {
     return (
       <div className={box}>
-        <p className="mb-2">Get a notification before a task is due.</p>
-        <button className="rounded bg-indigo-700 px-3 py-2 text-white" onClick={async () => setPerm(await requestPermission())}>Turn on reminders</button>
+        <p className="mb-3">Get a notification before a task is due.</p>
+        <button className="btn-filled" onClick={async () => setPerm(await requestPermission())}>Turn on reminders</button>
       </div>
     )
   }

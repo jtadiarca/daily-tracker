@@ -1,4 +1,109 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-body { @apply bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100; }
+
+/* Material 3 baseline color roles as RGB channels (so Tailwind can apply opacity). Light theme. */
+:root {
+  --md-primary: 103 80 164;
+  --md-on-primary: 255 255 255;
+  --md-primary-container: 234 221 255;
+  --md-on-primary-container: 33 0 93;
+  --md-secondary: 98 91 113;
+  --md-on-secondary: 255 255 255;
+  --md-secondary-container: 232 222 248;
+  --md-on-secondary-container: 29 25 43;
+  --md-tertiary: 125 82 96;
+  --md-on-tertiary: 255 255 255;
+  --md-tertiary-container: 255 216 228;
+  --md-on-tertiary-container: 49 17 29;
+  --md-error: 179 38 30;
+  --md-on-error: 255 255 255;
+  --md-error-container: 249 222 220;
+  --md-on-error-container: 65 14 11;
+  --md-surface: 254 247 255;
+  --md-on-surface: 29 27 32;
+  --md-on-surface-variant: 73 69 79;
+  --md-surface-container-lowest: 255 255 255;
+  --md-surface-container-low: 247 242 250;
+  --md-surface-container: 243 237 247;
+  --md-surface-container-high: 236 230 240;
+  --md-surface-container-highest: 230 224 233;
+  --md-outline: 121 116 126;
+  --md-outline-variant: 202 196 208;
+  --md-inverse-surface: 50 47 53;
+  --md-inverse-on-surface: 245 239 247;
+  --md-inverse-primary: 208 188 255;
+  --md-scrim: 0 0 0;
+}
+
+/* Dark theme, following the system setting. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-primary: 208 188 255;
+    --md-on-primary: 56 30 114;
+    --md-primary-container: 79 55 139;
+    --md-on-primary-container: 234 221 255;
+    --md-secondary: 204 194 220;
+    --md-on-secondary: 51 45 65;
+    --md-secondary-container: 74 68 88;
+    --md-on-secondary-container: 232 222 248;
+    --md-tertiary: 239 184 200;
+    --md-on-tertiary: 73 37 50;
+    --md-tertiary-container: 99 59 72;
+    --md-on-tertiary-container: 255 216 228;
+    --md-error: 242 184 181;
+    --md-on-error: 96 20 16;
+    --md-error-container: 140 29 24;
+    --md-on-error-container: 249 222 220;
+    --md-surface: 20 18 24;
+    --md-on-surface: 230 224 233;
+    --md-on-surface-variant: 202 196 208;
+    --md-surface-container-lowest: 15 13 19;
+    --md-surface-container-low: 29 27 32;
+    --md-surface-container: 33 31 38;
+    --md-surface-container-high: 43 41 48;
+    --md-surface-container-highest: 54 52 59;
+    --md-outline: 147 143 153;
+    --md-outline-variant: 73 69 79;
+    --md-inverse-surface: 230 224 233;
+    --md-inverse-on-surface: 50 47 53;
+    --md-inverse-primary: 103 80 164;
+  }
+}
+
+@layer base {
+  html { color-scheme: light dark; }
+  body { @apply bg-surface font-sans text-base text-on-surface antialiased; }
+  input[type='checkbox'], input[type='radio'] { accent-color: rgb(var(--md-primary)); }
+  :focus-visible { outline: 3px solid rgb(var(--md-primary)); outline-offset: 2px; }
+}
+
+@layer components {
+  /* Buttons */
+  .btn-filled { @apply inline-flex min-h-[44px] items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-on-primary transition hover:bg-primary/90 hover:shadow-m3-1 disabled:cursor-not-allowed disabled:opacity-40; }
+  .btn-filled-error { @apply inline-flex min-h-[44px] items-center justify-center rounded-full bg-error px-6 text-sm font-medium text-on-error transition hover:bg-error/90 hover:shadow-m3-1 disabled:cursor-not-allowed disabled:opacity-40; }
+  .btn-tonal { @apply inline-flex min-h-[44px] items-center justify-center rounded-full bg-secondary-container px-6 text-sm font-medium text-on-secondary-container transition hover:shadow-m3-1 disabled:cursor-not-allowed disabled:opacity-40; }
+  .btn-outlined { @apply inline-flex min-h-[44px] items-center justify-center rounded-full border border-outline px-6 text-sm font-medium text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40; }
+  .btn-outlined-error { @apply inline-flex min-h-[44px] items-center justify-center rounded-full border border-error px-6 text-sm font-medium text-error transition hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-40; }
+  .btn-text { @apply inline-flex min-h-[44px] items-center justify-center rounded-full px-3 text-sm font-medium text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40; }
+  .btn-text-error { @apply inline-flex min-h-[44px] items-center justify-center rounded-full px-3 text-sm font-medium text-error transition hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-40; }
+
+  /* Outlined text field */
+  .field { @apply w-full rounded-m3-xs border border-outline bg-transparent px-4 py-3 text-base text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary; }
+  .field-label { @apply block text-sm text-on-surface-variant; }
+
+  /* Cards */
+  .card { @apply rounded-m3-md bg-surface-container-low p-4 shadow-m3-1; }
+  .card-filled { @apply rounded-m3-md bg-surface-container-highest p-4; }
+
+  /* Chips */
+  .chip { @apply inline-flex min-h-[40px] cursor-pointer items-center rounded-m3-sm border border-outline px-4 text-sm font-medium text-on-surface-variant transition hover:bg-on-surface/10 focus-within:ring-2 focus-within:ring-primary; }
+  .chip-selected { @apply border-transparent bg-secondary-container text-on-secondary-container; }
+  .badge-error { @apply inline-flex items-center gap-1 rounded-m3-sm bg-error-container px-2 py-1 text-xs font-medium text-on-error-container; }
+
+  /* Dialogs and sheets */
+  .m3-dialog { @apply rounded-m3-xl bg-surface-container-high p-6 text-on-surface shadow-m3-3 backdrop:bg-scrim/30; }
+  .sheet { @apply fixed bottom-0 top-auto m-0 mx-auto max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-t-m3-xl bg-surface-container-low p-6 text-on-surface shadow-m3-3 backdrop:bg-scrim/30; }
+
+  .section-title { @apply text-sm font-medium text-primary; }
+}

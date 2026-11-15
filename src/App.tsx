@@ -50,7 +50,10 @@ export default function App() {
         : tab === 'upcoming' ? <UpcomingView date={date} onEdit={onEdit} />
         : tab === 'dashboard' ? <DashboardView now={now} />
         : <SettingsView />}
-      <button aria-label="Add task" onClick={() => setSheet({ open: true, task: null })} className="fixed bottom-20 right-4 z-20 h-14 w-14 rounded-full bg-indigo-700 text-3xl text-white shadow-lg">+</button>
+      <button aria-label="Add task" onClick={() => setSheet({ open: true, task: null })}
+        className="fixed bottom-24 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-m3-lg bg-primary-container text-on-primary-container shadow-m3-3 transition hover:shadow-m3-2">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
+      </button>
       <TabBar tab={tab} onChange={setTab} /><TaskSheet open={sheet.open} task={sheet.task} date={date} onClose={() => setSheet({ open: false, task: null })} />
     </main>
   )
