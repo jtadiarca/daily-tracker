@@ -8,6 +8,9 @@ import { DashboardView } from './features/dashboard/DashboardView'
 import { SettingsView } from './features/settings/SettingsView'
 import { useSettings } from './features/settings/useSettings'
 import { UpcomingView } from './features/upcoming/UpcomingView'
+import { useCategories } from './features/categories/useCategories'
+import { useCategoryView } from './features/categories/useCategoryView'
+import { categoryForFilter } from './lib/categories'
 import { ReminderPrompt } from './features/reminders/ReminderPrompt'
 import { ToastHost } from './features/reminders/ToastHost'
 import { useReminders } from './features/reminders/useReminders'
@@ -22,6 +25,8 @@ export default function App() {
   const now = useNow()
   const date = todayStr(now)
   const settings = useSettings()
+  const categories = useCategories()
+  const view = useCategoryView()
   setTimeFormat(settings.timeFormat)
   useReminders(date)
 
@@ -46,15 +51,15 @@ export default function App() {
           <ReminderPrompt />
         </div>
       )}
-      {tab === 'today' ? <TodayView date={date} now={now} onEdit={onEdit} />
-        : tab === 'upcoming' ? <UpcomingView date={date} onEdit={onEdit} />
+      {tab === 'today' ? <TodayView date={date} now={now} categories={categories} view={view} onEdit={onEdit} />
+        : tab === 'upcoming' ? <UpcomingView date={date} categories={categories} view={view} onEdit={onEdit} />
         : tab === 'dashboard' ? <DashboardView now={now} />
         : <SettingsView />}
       <button aria-label="Add task" onClick={() => setSheet({ open: true, task: null })}
         className="fixed bottom-24 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-m3-lg bg-primary-container text-on-primary-container shadow-m3-3 transition hover:shadow-m3-2">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
       </button>
-      <TabBar tab={tab} onChange={setTab} /><TaskSheet open={sheet.open} task={sheet.task} date={date} onClose={() => setSheet({ open: false, task: null })} />
+      <TabBar tab={tab} onChange={setTab} /><TaskSheet open={sheet.open} task={sheet.task} date={date} categories={categories} defaultCategoryId={categoryForFilter(view.filter, categories)} onClose={() => setSheet({ open: false, task: null })} />
     </main>
   )
 }

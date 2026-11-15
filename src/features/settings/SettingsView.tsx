@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { updateSettings } from '../../db/settingsRepo'
 import { BackupSection } from '../backup/BackupSection'
+import { CategoryManager } from '../categories/CategoryManager'
 import { getPermission, requestPermission, type PermissionState } from '../reminders/notify'
 import { useInstallPrompt } from './useInstallPrompt'
 import { useSettings } from './useSettings'
@@ -25,6 +26,8 @@ export function SettingsView() {
   return (
     <section aria-labelledby="settings-h" className="mx-auto max-w-xl space-y-6 p-4 pb-32">
       <h1 id="settings-h" className="text-3xl">Settings</h1>
+
+      <CategoryManager />
 
       <BackupSection />
 

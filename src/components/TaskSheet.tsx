@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Recurrence, Task } from '../db/types'
+import type { Category, Recurrence, Task } from '../db/types'
 import { createTask, updateTask } from '../db/repo'
+import { createCategory } from '../db/categoryRepo'
+import { MAX_CATEGORY_NAME, findCategoryByName } from '../lib/categories'
 import { todayStr } from '../lib/dates'
 import { intervalOf } from '../lib/recurrence'
 import {
@@ -14,12 +16,18 @@ const WEEKS: Array<[number, string]> = [[1, 'First'], [2, 'Second'], [3, 'Third'
 const MONTH_DAYS = [...Array.from({ length: 31 }, (_, i) => i + 1), -1]
 const dayText = (n: number) => (n === -1 ? 'Last day of the month' : `The ${ordinal(n)}`)
 const MAX_TIMES = 12
+const NEW_CATEGORY = '__new__'
 const EMPTY_FORM = formFromRecurrence()
 const DATE_OK = /^\d{4}-\d{2}-\d{2}$/
-export function TaskSheet({ open, task, date, onClose }: { open: boolean; task: Task | null; date: string; onClose: () => void }) {
+export function TaskSheet({ open, task, date, categories, defaultCategoryId, onClose }: {
+  open: boolean; task: Task | null; date: string; categories: Category[]; defaultCategoryId?: string; onClose: () => void
+}) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [title, setTitle] = useState('')
   const [notes, setNotes] = useState('')
+  // '' means no category, NEW_CATEGORY means "create one now" (named in newCategory), anything else is a category id.
+  const [categoryId, setCategoryId] = useState('')
+  const [newCategory, setNewCategory] = useState('')
   const [startDate, setStartDate] = useState(date)
   // All times of day for this task. The first one is the main time, the rest are extra times.
   const [slotTimes, setSlotTimes] = useState<string[]>([])
@@ -31,6 +39,9 @@ export function TaskSheet({ open, task, date, onClose }: { open: boolean; task: 
   useEffect(() => {
     if (!open) { dialog.current?.close(); return }
     setTitle(task?.title ?? ''); setNotes(task?.notes ?? ''); setStartDate(task?.startDate ?? date)
+    // A task whose category was deleted opens as "No category".
+    const wanted = task ? task.categoryId : defaultCategoryId
+    setCategoryId(wanted && categories.some(c => c.id === wanted) ? wanted : ''); setNewCategory('')
     setSlotTimes(task?.times && task.times.length >= 2 ? [...task.times].sort() : task?.time ? [task.time] : [])
     setRepeat(formFromRecurrence(task?.recurrence)); setEndsOn(!!task?.recurrence.endDate); setError('')
     setReminder(task?.reminderOffsetMin == null ? 'default' : String(task.reminderOffsetMin))
@@ -73,7 +84,12 @@ export function TaskSheet({ open, task, date, onClose }: { open: boolean; task: 
         else if (task && isRepeating) { time = task.time; timesFrom = startDate > todayStr() ? startDate : todayStr() }
       }
       const reminderOffsetMin = clean.length > 0 && reminder !== 'default' ? Number(reminder) : null
-      const data = { title: title.trim(), notes: notes.trim() || undefined, startDate, time, times, timesFrom, recurrence, reminderOffsetMin }
+      let chosenCategory: string | undefined = categoryId || undefined
+      if (categoryId === NEW_CATEGORY) {
+        // Reuse a category that already has this name instead of failing on a duplicate.
+        chosenCategory = (findCategoryByName(categories, newCategory) ?? await createCategory(newCategory)).id
+      }
+      const data = { title: title.trim(), notes: notes.trim() || undefined, categoryId: chosenCategory, startDate, time, times, timesFrom, recurrence, reminderOffsetMin }
       if (task) await updateTask(task.id, data); else await createTask(data)
       onClose()
     } catch (e) { setError(e instanceof Error ? e.message : 'Save failed') } finally { setSaving(false) }
@@ -82,6 +98,9 @@ export function TaskSheet({ open, task, date, onClose }: { open: boolean; task: 
     <form onSubmit={save} className="space-y-4"><h2 id="task-heading" className="text-2xl">{task ? 'Edit task' : 'New task'}</h2>
     <label className="field-label">Title<input autoFocus required value={title} onChange={e => setTitle(e.target.value)} className="field mt-1" /></label>
     <label className="field-label">Notes<textarea value={notes} onChange={e => setNotes(e.target.value)} className="field mt-1" /></label>
+    <label className="field-label">Category<select className="field mt-1" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+      <option value="">No category</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}<option value={NEW_CATEGORY}>New category…</option></select></label>
+    {categoryId === NEW_CATEGORY && <label className="field-label">New category name<input required autoFocus maxLength={MAX_CATEGORY_NAME} value={newCategory} onChange={e => setNewCategory(e.target.value)} className="field mt-1" /></label>}
     <label className="field-label">{isRepeating ? 'Starts' : 'Date'}<input type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} className="field mt-1" /></label>
     <label className="field-label">Time (optional)<input type="time" value={first} onChange={e => setSlotTimes(cur => e.target.value ? [e.target.value, ...cur.slice(1)] : [])} className="field mt-1" /></label>
     {slotTimes.length > 0 && <div className="space-y-2">

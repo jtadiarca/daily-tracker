@@ -20,7 +20,7 @@ export async function rescheduleToToday(taskId: string, date: string, slot: Slot
     const due = slot ?? orig.time
     const keepTime = due && due >= format(now, 'HH:mm') ? due : undefined
     const copy: Task = {
-      id: newId(), title: orig.title, notes: orig.notes, startDate: today, time: keepTime,
+      id: newId(), title: orig.title, notes: orig.notes, categoryId: orig.categoryId, startDate: today, time: keepTime,
       recurrence: { type: 'none' }, reminderOffsetMin: keepTime ? (orig.reminderOffsetMin ?? null) : null,
       createdAt: stamp, updatedAt: stamp,
     }

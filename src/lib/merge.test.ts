@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Completion, Settings, Task } from '../db/types'
+import type { Category, Completion, Settings, Task } from '../db/types'
 import { mergeDatasets, purgeTombstones, skippedCount, unchangedCount, type Dataset } from './merge'
 
 const NOW = new Date(Date.UTC(2026, 10, 15, 13, 0, 0))
@@ -13,10 +13,11 @@ const comp = (taskId: string, sec: number, o: Partial<Completion> = {}): Complet
 const settings = (sec: number, o: Partial<Settings> = {}): Settings => ({
   id: 'settings', timeFormat: '24h', defaultReminderOffsetMin: null, updatedAt: iso(sec), ...o,
 })
-const ds = (p: Partial<Dataset>): Dataset => ({ tasks: [], completions: [], settings: [], ...p })
+const category = (id: string, sec: number, o: Partial<Category> = {}): Category => ({ id, name: id, createdAt: iso(0), updatedAt: iso(sec), ...o })
+const ds = (p: Partial<Dataset>): Dataset => ({ tasks: [], completions: [], settings: [], categories: [], ...p })
 const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : 1)
 const norm = (d: Dataset): Dataset => ({
-  tasks: [...d.tasks].sort(byId), completions: [...d.completions].sort(byId), settings: [...d.settings].sort(byId),
+  tasks: [...d.tasks].sort(byId), completions: [...d.completions].sort(byId), settings: [...d.settings].sort(byId), categories: [...d.categories].sort(byId),
 })
 
 describe('last write wins', () => {
@@ -73,16 +74,18 @@ describe('idempotent and commutative', () => {
     tasks: [task('t1', 10, { title: 'A1' }), task('t2', 5), task('t3', 2)],
     completions: [comp('t1', 3), comp('t2', 20, { deletedAt: iso(20) })],
     settings: [settings(7)],
+    categories: [category('c1', 10, { name: 'Work' }), category('c2', 5), category('c3', 2)],
   })
   const B = ds({
     tasks: [task('t1', 12, { title: 'B1' }), task('t2', 6, { deletedAt: iso(6) }), task('t4', 1)],
     completions: [comp('t1', 4, { deletedAt: iso(4) }), comp('t2', 19)],
     settings: [settings(9, { timeFormat: '12h' })],
+    categories: [category('c1', 12, { name: 'Office' }), category('c2', 6, { deletedAt: iso(6) }), category('c4', 1)],
   })
   it('importing the same file twice changes nothing', () => {
     const once = mergeDatasets(A, B, NOW)
     const twice = mergeDatasets(once.merged, B, NOW)
-    expect(twice.changes).toEqual({ tasks: [], completions: [], settings: [] })
+    expect(twice.changes).toEqual({ tasks: [], completions: [], settings: [], categories: [] })
     expect(norm(twice.merged)).toEqual(norm(once.merged))
   })
   it('A into B and B into A converge to the same data', () => {
@@ -95,6 +98,30 @@ describe('idempotent and commutative', () => {
     expect(m.completions.find(c => c.taskId === 't1')?.deletedAt).toBeDefined()
     expect(m.completions.find(c => c.taskId === 't2')?.deletedAt).toBeDefined()
     expect(m.settings[0].timeFormat).toBe('12h')
+    expect(m.categories.find(c => c.id === 'c1')?.name).toBe('Office')
+    expect(m.categories.find(c => c.id === 'c2')?.deletedAt).toBeDefined()
+    expect(m.categories.map(c => c.id).sort()).toEqual(['c1', 'c2', 'c3', 'c4'])
+  })
+})
+
+describe('categories', () => {
+  it('a rename and a delete follow last write wins', () => {
+    const renamed = mergeDatasets(ds({ categories: [category('c', 5, { name: 'Old' })] }), ds({ categories: [category('c', 9, { name: 'New' })] }), NOW)
+    expect(renamed.merged.categories[0].name).toBe('New')
+    const deleted = mergeDatasets(ds({ categories: [category('c', 5)] }), ds({ categories: [category('c', 9, { deletedAt: iso(9) })] }), NOW)
+    expect(deleted.merged.categories[0].deletedAt).toBeDefined()
+  })
+  it('are counted in the summary and keep tasks that point at them', () => {
+    const incoming = ds({ tasks: [task('t', 3, { categoryId: 'c' })], categories: [category('c', 3)] })
+    const r = mergeDatasets(ds({}), incoming, NOW)
+    expect(r.summary.added).toBe(2)
+    expect(r.merged.tasks[0].categoryId).toBe('c')
+  })
+  it('ignores a category stamped more than 24 hours in the future', () => {
+    const future = category('f', 0, { updatedAt: new Date(NOW.getTime() + 25 * 3600 * 1000).toISOString() })
+    const r = mergeDatasets(ds({}), ds({ categories: [future] }), NOW)
+    expect(r.merged.categories).toHaveLength(0)
+    expect(r.summary.skippedFuture).toBe(1)
   })
 })
 
@@ -129,9 +156,11 @@ describe('purgeTombstones', () => {
     const d = ds({
       tasks: [task('old', 1, { deletedAt: old }), task('recent', 1, { deletedAt: recent }), task('live', 1)],
       completions: [comp('old', 1, { deletedAt: old })],
+      categories: [category('old', 1, { deletedAt: old }), category('recent', 1, { deletedAt: recent }), category('live', 1)],
     })
     const out = purgeTombstones(d, NOW)
     expect(out.tasks.map(t => t.id).sort()).toEqual(['live', 'recent'])
     expect(out.completions).toHaveLength(0)
+    expect(out.categories.map(c => c.id).sort()).toEqual(['live', 'recent'])
   })
 })

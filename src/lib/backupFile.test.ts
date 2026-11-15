@@ -5,7 +5,7 @@ const ISO = '2026-11-15T12:00:00.000Z'
 const task = { id: 't1', title: 'Take meds', startDate: '2026-11-15', time: '09:00', recurrence: { type: 'daily' }, reminderOffsetMin: 15, createdAt: ISO, updatedAt: ISO }
 const completion = { id: 't1_2026-11-15', taskId: 't1', date: '2026-11-15', completedAt: ISO, updatedAt: ISO }
 const envelope = (over: Record<string, unknown> = {}) => ({
-  app: 'daily-task-tracker', schemaVersion: 3, exportedAt: ISO, deviceId: 'dev-1',
+  app: 'daily-task-tracker', schemaVersion: 4, exportedAt: ISO, deviceId: 'dev-1',
   data: { tasks: [task], completions: [completion], settings: {} }, ...over,
 })
 const parse = (o: unknown) => parseBackupText(JSON.stringify(o))
@@ -18,12 +18,35 @@ describe('parseBackupText', () => {
     expect(r.ok).toBe(true)
     if (r.ok) expect(datasetFromEnvelope(r.envelope)).toMatchObject({ tasks: [{ id: 't1' }], completions: [{ id: 't1_2026-11-15' }], settings: [] })
   })
-  it('upgrades and accepts version 1 and version 2 backups', () => {
-    for (const schemaVersion of [1, 2]) {
+  it('upgrades and accepts version 1, 2 and 3 backups', () => {
+    for (const schemaVersion of [1, 2, 3]) {
       const r = parse(envelope({ schemaVersion }))
       expect(r.ok).toBe(true)
-      if (r.ok) expect(r.envelope.schemaVersion).toBe(3)
+      if (r.ok) expect(r.envelope.schemaVersion).toBe(4)
     }
+  })
+  it('imports an older backup with no categories as an empty category list', () => {
+    const r = parse(envelope({ schemaVersion: 3 }))
+    if (r.ok) expect(datasetFromEnvelope(r.envelope).categories).toEqual([])
+  })
+  it('accepts categories and a task that uses one', () => {
+    const category = { id: 'c1', name: 'Work', createdAt: ISO, updatedAt: ISO }
+    const r = parse(envelope({ data: { tasks: [{ ...task, categoryId: 'c1' }], completions: [], categories: [category, { ...category, id: 'c2', name: 'Old', deletedAt: ISO }] } }))
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      const d = datasetFromEnvelope(r.envelope)
+      expect(d.categories.map(c => c.id)).toEqual(['c1', 'c2'])
+      expect(d.tasks[0].categoryId).toBe('c1')
+    }
+  })
+  it('rejects a bad category and names it', () => {
+    const base = { id: 'c1', name: 'Work', createdAt: ISO, updatedAt: ISO }
+    for (const bad of [{ ...base, name: '' }, { ...base, name: '   ' }, { ...base, name: 'x'.repeat(41) }, { ...base, id: '' }, { ...base, updatedAt: 'now' }]) {
+      const r = parse(envelope({ data: { tasks: [], completions: [], categories: [bad] } }))
+      expect(r.ok).toBe(false)
+      expect(errorOf(r)).toMatch(/category #1/)
+    }
+    expect(parse(envelope({ data: { tasks: [{ ...task, categoryId: '' }], completions: [] } })).ok).toBe(false)
   })
   it('accepts several times a day with per-time completions', () => {
     const multi = { ...task, times: ['08:00', '20:00'], timesFrom: '2026-11-15' }
@@ -77,7 +100,7 @@ describe('parseBackupText', () => {
     expect(errorOf(parse(rest))).toMatch(/schema version/)
   })
   it('rejects a newer schema version', () => {
-    expect(errorOf(parse(envelope({ schemaVersion: 4 })))).toMatch(/newer version/)
+    expect(errorOf(parse(envelope({ schemaVersion: 5 })))).toMatch(/newer version/)
   })
   it('rejects a task with no title and names it', () => {
     const bad = { ...task, title: undefined }

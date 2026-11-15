@@ -28,10 +28,19 @@ export const RecurrenceSchema = z.object({
   rescheduledDates: z.array(slotDateStr).optional(),
 })
 
+export const CategorySchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1).max(40),
+  createdAt: isoUtc,
+  updatedAt: isoUtc,
+  deletedAt: isoUtc.optional(),
+})
+
 export const TaskSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   notes: z.string().optional(),
+  categoryId: z.string().min(1).optional(),
   startDate: dateStr,
   time: timeStr.optional(),
   times: z.array(timeStr).min(2).max(24).optional(),
@@ -71,6 +80,7 @@ export const EnvelopeSchema = z.object({
   data: z.object({
     tasks: z.array(TaskSchema),
     completions: z.array(CompletionSchema),
+    categories: z.array(CategorySchema).optional(),
     settings: z.union([SettingsSchema, z.object({}).strict()]).optional(),
   }),
 })

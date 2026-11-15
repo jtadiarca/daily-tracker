@@ -1,6 +1,6 @@
-import type { Completion, Settings, Task } from '../db/types'
+import type { Category, Completion, Settings, Task } from '../db/types'
 
-export interface Dataset { tasks: Task[]; completions: Completion[]; settings: Settings[] }
+export interface Dataset { tasks: Task[]; completions: Completion[]; settings: Settings[]; categories: Category[] }
 export interface MergeSummary { added: number; updated: number; identical: number; keptLocalNewer: number; skippedFuture: number }
 export interface MergeResult { merged: Dataset; changes: Dataset; summary: MergeSummary }
 
@@ -9,7 +9,7 @@ type Rec = { id: string; updatedAt: string; deletedAt?: string }
 export const SKEW_MS = 24 * 60 * 60 * 1000
 export const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000
 
-export const emptyDataset = (): Dataset => ({ tasks: [], completions: [], settings: [] })
+export const emptyDataset = (): Dataset => ({ tasks: [], completions: [], settings: [], categories: [] })
 
 export function stableStringify(v: unknown): string {
   return JSON.stringify(v, (_k, val) =>
@@ -49,10 +49,11 @@ export function mergeDatasets(local: Dataset, incoming: Dataset, now: Date): Mer
   const t = mergeCollection(local.tasks, incoming.tasks, nowMs)
   const c = mergeCollection(local.completions, incoming.completions, nowMs)
   const s = mergeCollection(local.settings, incoming.settings, nowMs)
-  const sum = (k: keyof MergeSummary) => t.s[k] + c.s[k] + s.s[k]
+  const g = mergeCollection(local.categories, incoming.categories, nowMs)
+  const sum = (k: keyof MergeSummary) => t.s[k] + c.s[k] + s.s[k] + g.s[k]
   return {
-    merged: { tasks: t.merged, completions: c.merged, settings: s.merged },
-    changes: { tasks: t.changes, completions: c.changes, settings: s.changes },
+    merged: { tasks: t.merged, completions: c.merged, settings: s.merged, categories: g.merged },
+    changes: { tasks: t.changes, completions: c.changes, settings: s.changes, categories: g.changes },
     summary: { added: sum('added'), updated: sum('updated'), identical: sum('identical'), keptLocalNewer: sum('keptLocalNewer'), skippedFuture: sum('skippedFuture') },
   }
 }
@@ -71,5 +72,6 @@ export function purgeTombstones(d: Dataset, now: Date): Dataset {
     tasks: d.tasks.filter(r => !isOldTombstone(r, now)),
     completions: d.completions.filter(r => !isOldTombstone(r, now)),
     settings: d.settings,
+    categories: d.categories.filter(r => !isOldTombstone(r, now)),
   }
 }

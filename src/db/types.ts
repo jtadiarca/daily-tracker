@@ -7,8 +7,11 @@ export interface Recurrence {
   weekOfMonth?: number          // monthlyWeekday: 1 to 4, or -1 for the last (default: the start date's)
   endDate?: string; skipDates?: string[]; rescheduledDates?: string[]
 }
+// A category the user creates and names. Deleting one is a tombstone; its tasks then count as "No category".
+export interface Category { id: string; name: string; createdAt: string; updatedAt: string; deletedAt?: string }
 export interface Task {
   id: string; title: string; notes?: string; startDate: string
+  categoryId?: string           // a Category id; missing, or pointing at a deleted category, means "No category"
   time?: string                 // single time of day (HH:mm); also the older single time when times is set
   times?: string[]              // two or more times of day: the task appears once per time, each checked off separately
   timesFrom?: string            // first date the times list applies to; earlier dates use the single time

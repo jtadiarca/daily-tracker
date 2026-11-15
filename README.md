@@ -9,7 +9,8 @@ A personal daily to-do app that works offline and keeps all of its data on your 
 ## Features
 
 - **Today:** tasks sorted by time, an Anytime section for untimed tasks, check and uncheck, quick add.
-- **Tasks:** title, notes, date, optional time, repeat (daily, weekdays, weekly on chosen days), reminder offset. Deleting a repeating task asks "this one only" or "all future".
+- **Tasks:** title, notes, category, date, optional time (or several times a day, each checked off separately), repeat (daily, weekdays, weekly, every N days, weeks, months or years, twice a month, monthly on a date or weekday, yearly) with an optional end date, and a reminder offset. Deleting a repeating task asks "this one only" or "all future".
+- **Categories:** create, rename and delete your own categories in Settings and pick one in the task form (or create one on the spot). Today and Upcoming can show one category at a time (or No category) and group tasks under category headings or by time. Deleting a category keeps its tasks, which then show as No category. Categories travel in backups like tasks do. The filter and grouping choice is a per-device preference and is not part of a backup.
 - **Status:** done, upcoming and missed are derived, never stored. Untimed tasks only become missed after local midnight.
 - **Reminders:** spoken aloud first (beep only if speech fails), plus a system notification or an in-app toast. See [docs/reminders.md](docs/reminders.md).
 - **Upcoming:** the next 14 days.

@@ -37,7 +37,7 @@ export function ImportDialog({ preview, onCancel, onDone }: {
         <div className="space-y-4">
           <h2 id="import-h" className="text-2xl">Import backup</h2>
           <p className="text-on-surface-variant">
-            {c.tasks} tasks, {c.completions} completions{c.deletions ? `, ${c.deletions} deletions` : ''}, exported on{' '}
+            {c.tasks} tasks, {c.completions} completions{c.categories ? `, ${c.categories} categories` : ''}{c.deletions ? `, ${c.deletions} deletions` : ''}, exported on{' '}
             {format(new Date(preview.exportedAt), 'PPP p')} from {preview.fromOtherDevice ? 'another device' : 'this device'}.
           </p>
           <fieldset className="space-y-1">
@@ -53,7 +53,7 @@ export function ImportDialog({ preview, onCancel, onDone }: {
               {m.skippedFuture > 0 && <p role="alert" className="rounded-m3-sm bg-tertiary-container p-2 text-on-tertiary-container">{m.skippedFuture} items were ignored because their timestamps are more than 24 hours in the future (a device clock may be wrong).</p>}
             </div>
           ) : (
-            <p role="alert" className="rounded-m3-sm bg-error-container p-3 text-sm text-on-error-container">This deletes {preview.replace.removingTasks} tasks and {preview.replace.removingCompletions} completions here and loads {c.tasks} tasks and {c.completions} completions from the file.</p>
+            <p role="alert" className="rounded-m3-sm bg-error-container p-3 text-sm text-on-error-container">This deletes {preview.replace.removingTasks} tasks, {preview.replace.removingCompletions} completions and {preview.replace.removingCategories} categories here and loads {c.tasks} tasks, {c.completions} completions and {c.categories} categories from the file.</p>
           )}
           {error && <p role="alert" className="text-error">{error}</p>}
           <div className="flex justify-end gap-2">

@@ -11,7 +11,7 @@ const fail = (error: string): ParseResult => ({ ok: false, error: `${error} Noth
 function describeIssue(i: ZodIssue): string {
   const p = i.path
   if (p[0] === 'data' && typeof p[2] === 'number') {
-    const kind = p[1] === 'tasks' ? 'task' : p[1] === 'completions' ? 'completion' : String(p[1])
+    const kind = p[1] === 'tasks' ? 'task' : p[1] === 'completions' ? 'completion' : p[1] === 'categories' ? 'category' : String(p[1])
     const field = p.length > 3 ? ` (${p.slice(3).join('.')})` : ''
     return `${kind} #${p[2] + 1}${field}: ${i.message}`
   }
@@ -50,5 +50,6 @@ export function datasetFromEnvelope(env: Envelope): Dataset {
     tasks: env.data.tasks,
     completions: env.data.completions,
     settings: s && 'id' in s ? [s as Settings] : [],
+    categories: env.data.categories ?? [],
   }
 }

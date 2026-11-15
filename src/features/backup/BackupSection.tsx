@@ -52,7 +52,7 @@ export function BackupSection() {
     setMsg({
       kind: 'ok',
       text: r.mode === 'replace'
-        ? `Replaced everything: loaded ${r.loaded.tasks} tasks and ${r.loaded.completions} completions.`
+        ? `Replaced everything: loaded ${r.loaded.tasks} tasks, ${r.loaded.completions} completions and ${r.loaded.categories} categories.`
         : `Import complete. Added ${r.summary.added}, updated ${r.summary.updated}, skipped ${skippedCount(r.summary)}` +
           (r.summary.skippedFuture ? ` (${r.summary.skippedFuture} ignored for future timestamps).` : '.'),
     })

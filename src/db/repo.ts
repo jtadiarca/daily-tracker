@@ -1,7 +1,7 @@
 import { db } from './db'
 import type { Task } from './types'
 import { newId, nowIso, completionId, addDaysStr } from '../lib/dates'
-export type NewTask = Pick<Task, 'title' | 'startDate'> & Partial<Pick<Task, 'notes' | 'time' | 'times' | 'timesFrom' | 'recurrence' | 'reminderOffsetMin'>>
+export type NewTask = Pick<Task, 'title' | 'startDate'> & Partial<Pick<Task, 'notes' | 'categoryId' | 'time' | 'times' | 'timesFrom' | 'recurrence' | 'reminderOffsetMin'>>
 export async function createTask(input: NewTask): Promise<Task> {
   if (!input.title.trim()) throw new Error('Title is required')
   const now = nowIso()
