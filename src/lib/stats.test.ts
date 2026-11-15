@@ -83,6 +83,31 @@ describe('missedOccurrences', () => {
   })
 })
 
+describe('multiple times a day', () => {
+  const multi = mk({ id: 'm', time: '08:00', times: ['08:00', '20:00'] })
+  it('counts each time as its own occurrence', () => {
+    const s = dayStat([multi], new Set(['m_2026-11-15_08:00']), '2026-11-15', at(15, 12))
+    expect(s).toMatchObject({ total: 2, done: 1, missed: 0, rate: 0.5 })
+  })
+  it('marks only the passed, unchecked time as missed', () => {
+    expect(dayStat([multi], new Set(), '2026-11-15', at(15, 12)).missed).toBe(1)
+  })
+  it('lists missed occurrences per time, latest time first', () => {
+    const out = missedOccurrences([multi], new Set(), '2026-11-15', '2026-11-15', at(15, 21))
+    expect(out.map(m => m.slot)).toEqual(['20:00', '08:00'])
+  })
+  it('hides only the rescheduled time', () => {
+    const t = mk({ id: 'm', time: '08:00', times: ['08:00', '20:00'], recurrence: { type: 'none', rescheduledDates: ['2026-11-15@08:00'] } })
+    const out = missedOccurrences([t], new Set(), '2026-11-15', '2026-11-15', at(15, 21))
+    expect(out.map(m => m.slot)).toEqual(['20:00'])
+  })
+  it('keeps earlier days single-time until timesFrom', () => {
+    const t = mk({ id: 'r', startDate: '2026-11-10', recurrence: { type: 'daily' }, time: '08:00', times: ['08:00', '20:00'], timesFrom: '2026-11-15' })
+    expect(dayStat([t], new Set(), '2026-11-14', at(15)).total).toBe(1)
+    expect(dayStat([t], new Set(), '2026-11-15', at(15, 12)).total).toBe(2)
+  })
+})
+
 describe('streakWindowStart', () => {
   it('uses the earliest task start, or today when there are no tasks', () => {
     expect(streakWindowStart([mk({ startDate: '2026-10-01' }), mk({ startDate: '2026-11-01' })], '2026-11-15')).toBe('2026-10-01')

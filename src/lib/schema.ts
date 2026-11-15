@@ -11,6 +11,8 @@ const dateStr = z.string()
     return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d
   }, 'is not a real calendar date')
 const timeStr = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be a time like 09:30')
+// A date, optionally followed by @HH:mm for tasks that appear several times a day.
+const slotDateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}(@([01]\d|2[0-3]):[0-5]\d)?$/, 'must be a date like 2026-11-15, optionally followed by @09:30')
 const isoUtc = z.string().datetime({ message: 'must be an ISO 8601 UTC timestamp' })
 
 export const RecurrenceSchema = z.object({
@@ -18,7 +20,7 @@ export const RecurrenceSchema = z.object({
   daysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
   endDate: dateStr.optional(),
   skipDates: z.array(dateStr).optional(),
-  rescheduledDates: z.array(dateStr).optional(),
+  rescheduledDates: z.array(slotDateStr).optional(),
 })
 
 export const TaskSchema = z.object({
@@ -27,6 +29,8 @@ export const TaskSchema = z.object({
   notes: z.string().optional(),
   startDate: dateStr,
   time: timeStr.optional(),
+  times: z.array(timeStr).min(2).max(24).optional(),
+  timesFrom: dateStr.optional(),
   recurrence: RecurrenceSchema,
   reminderOffsetMin: z.number().int().min(-1).max(1440).nullable().optional(),
   createdAt: isoUtc,
@@ -38,10 +42,13 @@ export const CompletionSchema = z.object({
   id: z.string().min(1),
   taskId: z.string().min(1),
   date: dateStr,
+  slot: timeStr.optional(),
   completedAt: isoUtc,
   updatedAt: isoUtc,
   deletedAt: isoUtc.optional(),
-}).refine(c => c.id === `${c.taskId}_${c.date}`, { message: 'id must equal taskId_date' })
+}).refine(c => c.id === (c.slot ? `${c.taskId}_${c.date}_${c.slot}` : `${c.taskId}_${c.date}`), {
+  message: 'id must equal taskId_date (plus _HH:mm for a time slot)',
+})
 
 export const SettingsSchema = z.object({
   id: z.literal('settings'),

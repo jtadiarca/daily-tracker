@@ -7,4 +7,7 @@ export const parseDateStr = (s: string) => parse(s, DATE_FMT, new Date(2000, 0, 
 export const addDaysStr = (s: string, n: number) => toDateStr(addDays(parseDateStr(s), n))
 export const nowIso = () => new Date().toISOString()
 export const newId = () => crypto.randomUUID()
-export const completionId = (taskId: string, date: string) => `${taskId}_${date}`
+
+// Tasks that appear several times a day add the time slot, so each time has its own completion.
+export const completionId = (taskId: string, date: string, slot?: string) =>
+  slot ? `${taskId}_${date}_${slot}` : `${taskId}_${date}`

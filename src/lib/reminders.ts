@@ -1,6 +1,7 @@
 import type { Task } from '../db/types'
-import { addDaysStr, completionId, parseDateStr, todayStr } from './dates'
+import { addDaysStr, parseDateStr, todayStr } from './dates'
 import { occursOn } from './recurrence'
+import { isSlotDone, slotsOf } from './slots'
 
 export interface Reminder {
   id: string          // unique per occurrence + fire time
@@ -31,13 +32,14 @@ export function atLocal(date: string, time: string): Date {
 
 export interface PlanInput {
   tasks: Task[]
-  doneKeys: Set<string>       // completion ids (taskId_date) that are done
+  doneKeys: Set<string>       // completion ids that are done
   firedIds: Set<string>
   now: Date
   defaultOffset: number | null | undefined
 }
 
 // Looks at today and tomorrow (so a 00:30 task with a 60 min offset fires the evening before).
+// A task with several times a day gets one reminder per time.
 export function planReminders(p: PlanInput): { fireNow: Reminder[]; scheduled: Reminder[] } {
   const today = todayStr(p.now)
   const dates = [today, addDaysStr(today, 1)]
@@ -46,20 +48,23 @@ export function planReminders(p: PlanInput): { fireNow: Reminder[]; scheduled: R
   const nowMs = p.now.getTime()
 
   for (const t of p.tasks) {
-    if (t.deletedAt || !t.time) continue
+    if (t.deletedAt) continue
     const off = effectiveOffset(t, p.defaultOffset)
     if (off == null) continue
     for (const date of dates) {
       if (!occursOn(t, date)) continue
-      if (p.doneKeys.has(completionId(t.id, date))) continue
-      const dueAt = atLocal(date, t.time)
-      const fireAt = new Date(dueAt.getTime() - off * 60000)
-      const id = `${t.id}_${date}_${fireAt.getTime()}`
-      if (p.firedIds.has(id)) continue
-      if (nowMs > dueAt.getTime() + GRACE_MS) continue
-      const r: Reminder = { id, taskId: t.id, date, title: t.title, time: t.time, fireAt, dueAt }
-      if (fireAt.getTime() <= nowMs) fireNow.push(r)
-      else scheduled.push(r)
+      for (const slot of slotsOf(t, date)) {
+        if (!slot) continue
+        if (isSlotDone(p.doneKeys, t, date, slot)) continue
+        const dueAt = atLocal(date, slot)
+        const fireAt = new Date(dueAt.getTime() - off * 60000)
+        const id = `${t.id}_${date}_${fireAt.getTime()}`
+        if (p.firedIds.has(id)) continue
+        if (nowMs > dueAt.getTime() + GRACE_MS) continue
+        const r: Reminder = { id, taskId: t.id, date, title: t.title, time: slot, fireAt, dueAt }
+        if (fireAt.getTime() <= nowMs) fireNow.push(r)
+        else scheduled.push(r)
+      }
     }
   }
   scheduled.sort((a, b) => a.fireAt.getTime() - b.fireAt.getTime())

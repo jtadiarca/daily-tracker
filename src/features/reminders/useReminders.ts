@@ -11,7 +11,7 @@ import { deliver } from './notify'
 export function useReminders(date: string) {
   const data = useLiveQuery(async () => {
     const next = addDaysStr(date, 1)
-    const tasks = (await db.tasks.toArray()).filter(t => !t.deletedAt && t.time)
+    const tasks = (await db.tasks.toArray()).filter(t => !t.deletedAt && (t.time || (t.times && t.times.length > 0)))
     const comps = (await db.completions.where('date').anyOf([date, next]).toArray()).filter(c => !c.deletedAt)
     const s = await db.settings.get('settings')
     return { tasks, doneKeys: comps.map(c => c.id), defaultOffset: s?.defaultReminderOffsetMin ?? null }

@@ -1,21 +1,25 @@
 import type { Task } from '../db/types'
-import { addDaysStr, completionId } from './dates'
+import { addDaysStr } from './dates'
 import { occursOn } from './recurrence'
+import { isSlotDone, rescheduleKey, slotsOf, type Slot } from './slots'
 import { deriveStatus } from './status'
 
 export interface DayStat { date: string; total: number; done: number; missed: number; rate: number | null }
-export interface MissedItem { task: Task; date: string }
+export interface MissedItem { task: Task; date: string; slot: Slot }
 
 // Streaks look back at most this many days (about 3 years) to keep the dashboard fast.
 export const STREAK_MAX_DAYS = 1095
 
+// Every time a task has to be done counts as its own occurrence.
 export function dayStat(tasks: Task[], doneKeys: Set<string>, date: string, now: Date): DayStat {
   let total = 0, done = 0, missed = 0
   for (const t of tasks) {
     if (t.deletedAt || !occursOn(t, date)) continue
-    total++
-    if (doneKeys.has(completionId(t.id, date))) done++
-    else if (deriveStatus({ date, time: t.time, done: false, now }) === 'missed') missed++
+    for (const slot of slotsOf(t, date)) {
+      total++
+      if (isSlotDone(doneKeys, t, date, slot)) done++
+      else if (deriveStatus({ date, time: slot ?? undefined, done: false, now }) === 'missed') missed++
+    }
   }
   return { date, total, done, missed, rate: total ? done / total : null }
 }
@@ -32,11 +36,13 @@ export function missedOccurrences(tasks: Task[], doneKeys: Set<string>, from: st
   for (let d = from; d <= to; d = addDaysStr(d, 1)) {
     for (const t of tasks) {
       if (t.deletedAt || !occursOn(t, d)) continue
-      if (doneKeys.has(completionId(t.id, d)) || t.recurrence.rescheduledDates?.includes(d)) continue
-      if (deriveStatus({ date: d, time: t.time, done: false, now }) === 'missed') out.push({ task: t, date: d })
+      for (const slot of slotsOf(t, d)) {
+        if (isSlotDone(doneKeys, t, d, slot) || t.recurrence.rescheduledDates?.includes(rescheduleKey(t, d, slot))) continue
+        if (deriveStatus({ date: d, time: slot ?? undefined, done: false, now }) === 'missed') out.push({ task: t, date: d, slot })
+      }
     }
   }
-  return out.sort((a, b) => b.date.localeCompare(a.date) || (b.task.time ?? '').localeCompare(a.task.time ?? ''))
+  return out.sort((a, b) => b.date.localeCompare(a.date) || (b.slot ?? '').localeCompare(a.slot ?? ''))
 }
 
 export function streakWindowStart(tasks: Task[], today: string): string {

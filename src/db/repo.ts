@@ -1,11 +1,16 @@
 import { db } from './db'
 import type { Task } from './types'
 import { newId, nowIso, completionId, addDaysStr } from '../lib/dates'
-export type NewTask = Pick<Task, 'title' | 'startDate'> & Partial<Pick<Task, 'notes' | 'time' | 'recurrence' | 'reminderOffsetMin'>>
+export type NewTask = Pick<Task, 'title' | 'startDate'> & Partial<Pick<Task, 'notes' | 'time' | 'times' | 'timesFrom' | 'recurrence' | 'reminderOffsetMin'>>
 export async function createTask(input: NewTask): Promise<Task> {
   if (!input.title.trim()) throw new Error('Title is required')
   const now = nowIso()
-  const task: Task = { ...input, id: newId(), title: input.title.trim(), notes: input.notes?.trim() || undefined, time: input.time || undefined, recurrence: input.recurrence ?? { type: 'none' }, reminderOffsetMin: input.reminderOffsetMin ?? null, createdAt: now, updatedAt: now }
+  const hasTimes = !!input.times && input.times.length >= 2
+  const task: Task = {
+    ...input, id: newId(), title: input.title.trim(), notes: input.notes?.trim() || undefined, time: input.time || undefined,
+    times: hasTimes ? input.times : undefined, timesFrom: hasTimes ? input.timesFrom : undefined,
+    recurrence: input.recurrence ?? { type: 'none' }, reminderOffsetMin: input.reminderOffsetMin ?? null, createdAt: now, updatedAt: now,
+  }
   await db.tasks.add(task)
   return task
 }
@@ -38,12 +43,13 @@ export async function endSeriesFrom(id: string, date: string) {
     else await db.tasks.put({ ...task, recurrence: { ...task.recurrence, endDate: task.recurrence.endDate && task.recurrence.endDate < endDate ? task.recurrence.endDate : endDate }, updatedAt: now })
   })
 }
-export async function setDone(taskId: string, date: string, done: boolean) {
-  const id = completionId(taskId, date)
+// slot: the time (HH:mm) for tasks that appear several times a day, otherwise null.
+export async function setDone(taskId: string, date: string, done: boolean, slot: string | null = null) {
+  const id = completionId(taskId, date, slot ?? undefined)
   const now = nowIso()
   await db.transaction('rw', db.completions, async () => {
     const current = await db.completions.get(id)
-    if (done) await db.completions.put({ id, taskId, date, completedAt: now, updatedAt: now })
+    if (done) await db.completions.put({ id, taskId, date, ...(slot ? { slot } : {}), completedAt: now, updatedAt: now })
     else if (current && !current.deletedAt) await db.completions.update(id, { deletedAt: now, updatedAt: now })
   })
 }

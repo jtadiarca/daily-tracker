@@ -132,14 +132,16 @@ export function DashboardView({ now }: { now: Date }) {
         {missed.length === 0 ? <p className="text-on-surface-variant">Nothing missed in this range.</p> : (
           <ul className="space-y-2">
             {missed.map(m => {
-              const when = format(parseDateStr(m.date), 'EEE, MMM d')
+              const day = format(parseDateStr(m.date), 'EEE, MMM d')
+              const dueAt = m.slot ?? m.task.time
+              const when = dueAt ? `${day} at ${formatTime(dueAt)}` : day
               return (
-                <li key={`${m.task.id}_${m.date}`} className="card">
+                <li key={`${m.task.id}_${m.date}_${m.slot ?? ''}`} className="card">
                   <p className="font-medium">{m.task.title}</p>
-                  <p className="text-sm text-on-surface-variant">{when}{m.task.time ? ` at ${formatTime(m.task.time)}` : ''}</p>
+                  <p className="text-sm text-on-surface-variant">{when}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button className="btn-tonal" aria-label={`Mark ${m.task.title} from ${when} done late`} onClick={() => act(() => markDoneLate(m.task.id, m.date))}>Mark done late</button>
-                    <button className="btn-outlined" aria-label={`Reschedule ${m.task.title} from ${when} to today`} onClick={() => act(() => rescheduleToToday(m.task.id, m.date, new Date()))}>Reschedule to today</button>
+                    <button className="btn-tonal" aria-label={`Mark ${m.task.title} from ${when} done late`} onClick={() => act(() => markDoneLate(m.task, m.date, m.slot))}>Mark done late</button>
+                    <button className="btn-outlined" aria-label={`Reschedule ${m.task.title} from ${when} to today`} onClick={() => act(() => rescheduleToToday(m.task.id, m.date, m.slot, new Date()))}>Reschedule to today</button>
                   </div>
                 </li>
               )

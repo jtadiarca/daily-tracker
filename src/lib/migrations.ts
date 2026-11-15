@@ -1,12 +1,15 @@
-export const CURRENT_SCHEMA_VERSION = 1
+export const CURRENT_SCHEMA_VERSION = 2
 
 export type RawEnvelope = Record<string, unknown>
 export type MigrationChain = Record<number, (env: RawEnvelope) => RawEnvelope>
 
 // Each entry upgrades a backup from version N to N+1 and must set schemaVersion to N+1.
-// When schema 2 ships: bump CURRENT_SCHEMA_VERSION to 2, add `1: (env) => ({ ...env, schemaVersion: 2, data: ... })` here,
-// and update the Zod schema in schema.ts to the new shape. Old backups then upgrade step by step.
-export const MIGRATIONS: MigrationChain = {}
+// To add version 3: bump CURRENT_SCHEMA_VERSION, add a `2: (env) => ...` step here, and update schema.ts.
+export const MIGRATIONS: MigrationChain = {
+  // v1 -> v2: version 2 adds several times a day (task.times, task.timesFrom) and per-time completions
+  // (completion.slot). Everything is optional, so a version 1 backup is valid as it is.
+  1: env => ({ ...env, schemaVersion: 2 }),
+}
 
 export function migrateEnvelope(env: RawEnvelope, chain: MigrationChain = MIGRATIONS, target: number = CURRENT_SCHEMA_VERSION): RawEnvelope {
   let cur = env

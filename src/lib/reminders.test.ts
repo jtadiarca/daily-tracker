@@ -80,3 +80,20 @@ describe('planReminders', () => {
     expect(plan([t2], at(15, 8)).scheduled.map(x => x.date)).toEqual(['2026-11-15', '2026-11-16'])
   })
 })
+
+describe('multiple times a day', () => {
+  const multi = mk({ times: ['09:00', '21:00'] })
+  it('plans one reminder per time', () => {
+    const r = plan([multi], at(15, 8))
+    expect(r.scheduled.map(x => x.time)).toEqual(['09:00', '21:00'])
+    expect(r.scheduled[1].fireAt).toEqual(at(15, 20, 45))
+  })
+  it('skips only the time that is already done', () => {
+    const r = plan([multi], at(15, 8), { doneKeys: new Set(['t1_2026-11-15_09:00']) })
+    expect(r.scheduled.map(x => x.time)).toEqual(['21:00'])
+  })
+  it('gives each time its own reminder id', () => {
+    const ids = plan([multi], at(15, 8)).scheduled.map(x => x.id)
+    expect(new Set(ids).size).toBe(2)
+  })
+})
