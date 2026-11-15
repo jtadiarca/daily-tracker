@@ -7,6 +7,7 @@
   2. Installs Git and Node.js LTS with winget if they are missing or too old.
   3. Clones the project (or updates it), installs dependencies and runs the tests.
   4. Starts the development server, or with -Service installs a Windows service that serves the built app at boot.
+  5. With -AutoOpen, adds a startup shortcut that opens the app at login so reminders can fire.
 
 .PARAMETER Dir
   Where to put the project when it is not already on disk. Default: a daily-tracker folder in your home folder.
@@ -33,6 +34,17 @@
 .PARAMETER Port
   Port for the service. Default: 4173.
 
+.PARAMETER AutoOpen
+  Add a shortcut to your Startup folder that opens http://localhost:<Port> as a minimized app window when you
+  sign in. Reminders only fire while the app is open, so this keeps it open without you doing anything.
+
+.PARAMETER RemoveAutoOpen
+  Remove that startup shortcut.
+
+.PARAMETER Browser
+  Which browser the startup shortcut uses: Auto (Chrome if found, otherwise Edge), Chrome or Edge.
+  Use the browser where you installed the app and allowed notifications.
+
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 
@@ -40,7 +52,7 @@
   powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Dir C:\dev\daily-tracker -SkipTests -NoStart
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Service
+  powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Service -AutoOpen
 #>
 [CmdletBinding()]
 param(
@@ -52,6 +64,9 @@ param(
   [switch]$Service,
   [switch]$RemoveService,
   [ValidateRange(1024, 65535)][int]$Port = 4173,
+  [switch]$AutoOpen,
+  [switch]$RemoveAutoOpen,
+  [ValidateSet('Auto', 'Chrome', 'Edge')][string]$Browser = 'Auto',
   [switch]$Elevated
 )
 
@@ -170,6 +185,54 @@ function Install-DttService {
   Write-Host "    Remove:  run this script with -RemoveService"
 }
 
+function Find-Browser([string]$pref) {
+  $paths = @{
+    Chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe", "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe")
+    Edge   = @("${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe", "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe")
+  }
+  $order = if ($pref -eq 'Auto') { @('Chrome', 'Edge') } else { @($pref) }
+  foreach ($name in $order) {
+    foreach ($p in $paths[$name]) {
+      if (Test-Path $p) { return @{ Name = $name; Path = $p } }
+    }
+  }
+  return $null
+}
+
+function Get-StartupShortcut { return (Join-Path ([Environment]::GetFolderPath('Startup')) 'Daily Task Tracker.lnk') }
+
+# Reminders run inside the open page, so the page has to be open. This opens it at every sign-in.
+function Install-AutoOpen {
+  $b = Find-Browser $Browser
+  if (-not $b) { throw 'Neither Chrome nor Edge was found. Install one of them, or pass -Browser to choose.' }
+  if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) {
+    Warn "The $ServiceName service is not installed, so http://localhost:$Port will not answer after a restart. Add -Service to install it too."
+  }
+  $url = "http://localhost:$Port"
+  $lnk = Get-StartupShortcut
+  $shell = New-Object -ComObject WScript.Shell
+  $sc = $shell.CreateShortcut($lnk)
+  $sc.TargetPath = $b.Path
+  $sc.Arguments = "--app=$url"
+  $sc.WindowStyle = 7
+  $sc.Description = 'Opens Daily Task Tracker at sign-in so reminders can fire.'
+  $sc.Save()
+  Ok "Added a startup shortcut that opens $url in $($b.Name): $lnk"
+  Write-Host "`n    Do these once:"
+  Write-Host "    1. Double-click that shortcut now (press Win+R and run shell:startup to find it)."
+  Write-Host "    2. In the app window open Settings, then press Turn on reminders and choose Allow."
+  Write-Host "    3. In $($b.Name) settings, under Performance, add $url to the list of sites that are never put to sleep."
+  Write-Host "    4. Leave the window open or minimized. Closing it stops reminders until the next sign-in."
+  Write-Host "`n    Note: browsers only allow spoken reminders after you click inside the window once per sign-in."
+  Write-Host "    The notification itself appears without a click. A sleeping or powered-off PC cannot show reminders."
+}
+
+function Remove-AutoOpen {
+  $lnk = Get-StartupShortcut
+  if (Test-Path $lnk) { Remove-Item -LiteralPath $lnk -Force; Ok 'Removed the startup shortcut.' }
+  else { Ok 'There is no startup shortcut to remove.' }
+}
+
 $script:failed = $false
 try {
   if (($Service -or $RemoveService) -and -not (Test-Admin)) {
@@ -183,9 +246,15 @@ try {
     return
   }
 
-  if ($RemoveService) {
-    Step "Removing the $ServiceName service"
-    Remove-DttService
+  if ($RemoveService -or $RemoveAutoOpen) {
+    if ($RemoveAutoOpen) { Step 'Removing the startup shortcut'; Remove-AutoOpen }
+    if ($RemoveService) { Step "Removing the $ServiceName service"; Remove-DttService }
+    return
+  }
+
+  if ($AutoOpen -and -not $Service) {
+    Step 'Adding the startup shortcut'
+    Install-AutoOpen
     return
   }
 
@@ -256,6 +325,10 @@ try {
     Run-Npm 'run', 'build'
     Step "Installing the $ServiceName Windows service"
     Install-DttService
+    if ($AutoOpen) {
+      Step 'Adding the startup shortcut'
+      Install-AutoOpen
+    }
     Write-Host "`nAll set. The project is in: $Dir" -ForegroundColor Green
     return
   }

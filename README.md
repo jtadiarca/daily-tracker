@@ -32,7 +32,7 @@ If you already have the project, double-click `setup.cmd`, or run this in PowerS
 powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 ```
 
-Options: `-Dir C:\dev\daily-tracker` (where to clone), `-SkipTests`, `-Build` (also run a production build), `-NoStart` (do not start the app), `-RepoUrl <url>`, `-Service`, `-RemoveService` and `-Port` (see the next section).
+Options: `-Dir C:\dev\daily-tracker` (where to clone), `-SkipTests`, `-Build` (also run a production build), `-NoStart` (do not start the app), `-RepoUrl <url>`, and the service and startup options in the next two sections.
 
 If the project is not on the machine yet and the repository is public, this one line downloads and runs the script:
 
@@ -59,9 +59,32 @@ Windows asks for administrator permission. The script then builds the app, insta
 Things to know:
 
 - **Separate data:** a browser keeps data per address and port, so `http://localhost:4173` starts empty. Export a backup from the old address (for example `http://localhost:5173`) and import it here.
-- **Reminders need the app open:** the service only serves the files. Reminders run inside the page, so open the app (or the installed app window) and keep it open. Installing it from the browser's Install button on `http://localhost:4173` works because localhost counts as a secure context.
+- **Reminders need the app open:** the service only serves the files. Reminders run inside the page, so the app has to be open. The next section sets that up.
 - **Not for sharing:** `vite preview` is meant for local use, not as a public production server. Use Netlify or Vercel if you want other devices to reach the app.
 - **Folder choice:** keep the project in a plain folder such as `C:\dev`, not in OneDrive, so the service can always read it.
+
+## Reminders without opening anything yourself (optional)
+
+Reminders are timers inside the page, so the page must be open when a task is due. `-AutoOpen` adds a shortcut to your Startup folder that opens the app in a minimized app window every time you sign in:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Service -AutoOpen
+```
+
+Use `-Browser Chrome` or `-Browser Edge` to choose the browser (it should be the one where you install the app and allow notifications). Remove the shortcut with `-RemoveAutoOpen`.
+
+Do these once:
+
+1. Double-click the new shortcut (press Win+R and run `shell:startup` to find it), open Settings in the app, and press Turn on reminders, then Allow.
+2. In the browser's Performance settings, add `http://localhost:4173` to "Always keep these sites active" (Chrome) or "Never put these sites to sleep" (Edge), so the page is not put to sleep and its timers keep running.
+3. Leave the window open or minimized. Closing it stops reminders until the next sign-in.
+
+Limits you cannot avoid in a browser app:
+
+- **Spoken reminders need one click per sign-in.** Browsers refuse to speak until you have interacted with the page at least once. Notifications do not have that rule, so they appear on their own, but the spoken part stays silent (the beep is blocked the same way) until you click inside the window.
+- **The PC must be awake and signed in.** A sleeping or powered-off PC cannot show reminders. After waking, a reminder that is at most five minutes past its due time still fires.
+- **Focus assist or Do Not Disturb** can hide Windows notifications.
+- For reminders that work with no window at all, the app would need a native wrapper (for example Electron or Capacitor) with its own background process. That is not part of this version.
 
 ## Run it
 
@@ -122,7 +145,7 @@ Reminders are scheduled with timers while the app is open, and re-planned whenev
 ## Project layout
 
 ```
-scripts/setup.ps1   one-command setup for a new Windows PC, with an optional boot-time service (setup.cmd is a double-click launcher)
+scripts/setup.ps1   one-command setup for a new Windows PC, with optional boot-time service and login shortcut (setup.cmd is a double-click launcher)
 src/db              Dexie schema, repositories, backup and import code
 src/lib             pure, tested logic: dates, recurrence, status, stats, reminders, merge, schema, migrations
 src/features        today, upcoming, dashboard, settings, reminders, backup
