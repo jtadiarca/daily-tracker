@@ -32,7 +32,20 @@ The setup script installs what is missing and gets the app running. It will:
 3. Clone this repository (or update it), run `npm install`, and run the tests.
 4. Start the development server and open the app in your browser.
 
-If you already have the project, double-click `setup.cmd`, or run this in PowerShell from the project folder:
+### The easy way: double-click `setup.cmd`
+
+If the project is already on the machine, double-click **`setup.cmd`** in the project folder. With no arguments it does the full everyday setup, so running it again later is also how you update:
+
+1. Everything above: execution policy, Git and Node.js, `npm install` and the tests.
+2. It pulls the latest code first. If you have uncommitted changes, it skips the pull and warns you, so your work is never touched.
+3. It builds the app and installs, or updates, the **DailyTaskTracker** Windows service, which serves the app at http://localhost:4173 from boot. Windows asks for administrator permission, and the rest runs in an admin window. Press Enter there when it says it's done.
+4. It adds the **startup shortcut** that opens the app, minimized, each time you sign in, so reminders can fire.
+
+It doesn't start the development server. Open http://localhost:4173 instead. To pick options yourself, pass them on the command line, for example `setup.cmd -NoStart` installs everything without the service or shortcut.
+
+### Running the script yourself
+
+From PowerShell in the project folder, with no options, the script sets up the project and starts the development server (http://localhost:5173):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
@@ -200,7 +213,7 @@ Reminders are scheduled with timers while the app is open, and re-planned whenev
 ## Project layout
 
 ```
-scripts/setup.ps1   one-command setup for a new Windows PC, with optional boot-time service and login shortcut (setup.cmd is a double-click launcher)
+scripts/setup.ps1   one-command setup for a new Windows PC, with optional boot-time service and login shortcut (setup.cmd runs it with -Service -AutoOpen: the full setup or update in one double-click)
 src/db              Dexie schema, repositories, backup and import code
 src/lib             pure, tested logic: dates, recurrence, status, stats, reminders, merge, schema, migrations
 src/features        today, upcoming, dashboard, settings, reminders, backup, categories

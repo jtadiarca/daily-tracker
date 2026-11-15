@@ -295,6 +295,17 @@ try {
   if ($scriptRoot -and (Test-Path (Join-Path $scriptRoot 'package.json'))) {
     $Dir = $scriptRoot
     Ok "Using the project this script belongs to: $Dir"
+    # Bring it up to date, but never touch uncommitted work.
+    if (Test-Path (Join-Path $Dir '.git')) {
+      $dirty = & git -C $Dir status --porcelain
+      if ($dirty) {
+        Warn 'You have uncommitted changes, so the latest code was not pulled. Commit or stash them and run again to update.'
+      } else {
+        & git -C $Dir pull --ff-only
+        if ($LASTEXITCODE -ne 0) { Warn 'git pull did not succeed (see above). Continuing with the code already on disk.' }
+        else { Ok 'Pulled the latest code.' }
+      }
+    }
   } elseif (Test-Path (Join-Path $Dir '.git')) {
     Ok "Updating the existing copy in $Dir"
     & git -C $Dir pull
