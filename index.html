@@ -5,5 +5,7 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 <meta name="apple-mobile-web-app-title" content="Daily Tasks" />
+<!-- Set light or dark mode before anything draws, from Settings > Appearance (default: follow the device). -->
+<script>try{var m=localStorage.getItem("dtt.colorMode");if(m!=="light"&&m!=="dark")m=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.mode=m}catch(e){}</script>
 <title>Daily Tracker</title></head>
 <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>

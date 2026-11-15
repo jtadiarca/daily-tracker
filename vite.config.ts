@@ -32,5 +32,6 @@ export default defineConfig({
       devOptions: { enabled: true, type: 'module' },
     }),
   ],
-  test: { environment: 'node' },
+  // material-color-utilities 0.4.0 has an import without a .js extension that Node rejects, so let Vite process it in tests.
+  test: { environment: 'node', server: { deps: { inline: ['@material/material-color-utilities'] } } },
 })

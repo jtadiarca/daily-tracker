@@ -16,7 +16,12 @@ A personal daily to-do app that works offline and keeps all of its data on your 
 - **Upcoming:** the next 14 days.
 - **Dashboard:** today's progress ring, completion rate chart (7 days, 30 days or a custom range), current and best streak, and a missed list with "Mark done late" and "Reschedule to today". A category filter narrows every number on the page to one category (or No category), and a "By category" card shows the completion rate of each category in the range. The Dashboard keeps its own filter, separate from Today and Upcoming.
 - **Settings:** install, default reminder, notification permission, 12 or 24 hour time (12 hour by default), backup and transfer (file or Google Drive).
-- **Design:** Material 3 color roles, shapes and components, with light and dark themes that follow the system setting.
+- **Design:** Material 3 color roles, shapes and components, in light and dark mode.
+- **Light or dark:** Settings, Appearance has a System / Light / Dark switch. System (the default) follows the device and switches live when it changes; Light and Dark override it. A small script in `index.html` applies the choice before the page draws, so there is no flash.
+- **Color themes:** Settings, Appearance, Color. Pick one of nine Material 3 themes (Baseline purple, the default, plus Blue, Indigo, Teal, Green, Olive, Orange, Red and Pink) or choose any color of your own.
+  - Each theme is generated from one seed color with Google's Material Color Utilities (`@material/material-color-utilities`, the engine behind Material Theme Builder), which works out every color role for light and dark mode with readable contrast.
+  - Saved on each device (localStorage), not in backups, and applied before the app first draws so the default colors never flash.
+  - Presets and the generator are in `src/lib/theme.ts`. To add a preset, add a name and seed color to `THEME_PRESETS`.
 - **Adaptive layout:** follows Material 3 window sizes, and switches when you rotate the device or resize the window.
   - Under 600px wide (phones held upright): bottom navigation bar, floating + button, and the task form as a bottom sheet.
   - 600px and wider (phones on their side, tablets, laptops): a navigation rail on the left with the + button at its top, so lists keep the full screen height. The task form opens as a centered dialog that scrolls on short screens.

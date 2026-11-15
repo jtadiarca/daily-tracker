@@ -36,9 +36,10 @@
   --md-scrim: 0 0 0;
 }
 
-/* Dark theme, following the system setting. */
-@media (prefers-color-scheme: dark) {
-  :root {
+/* Dark theme. A small script in index.html sets data-mode on <html> to "light" or "dark" before the page
+   draws, from the Appearance setting (System follows the device's setting live). */
+:root[data-mode='dark'] {
+  color-scheme: dark;
     --md-primary: 208 188 255;
     --md-on-primary: 56 30 114;
     --md-primary-container: 79 55 139;
@@ -68,11 +69,11 @@
     --md-inverse-surface: 230 224 233;
     --md-inverse-on-surface: 50 47 53;
     --md-inverse-primary: 103 80 164;
-  }
 }
 
 @layer base {
-  html { color-scheme: light dark; }
+  /* Form controls and scrollbars follow the chosen mode (the dark block above sets color-scheme: dark). */
+  html { color-scheme: light; }
   body { @apply bg-surface font-sans text-base text-on-surface antialiased; }
   input[type='checkbox'], input[type='radio'] { accent-color: rgb(var(--md-primary)); }
   :focus-visible { outline: 3px solid rgb(var(--md-primary)); outline-offset: 2px; }

@@ -4,6 +4,7 @@ import { BackupSection } from '../backup/BackupSection'
 import { CategoryManager } from '../categories/CategoryManager'
 import { VoiceSettings } from '../reminders/VoiceSettings'
 import { getPermission, requestPermission, type PermissionState } from '../reminders/notify'
+import { ThemeSettings } from './ThemeSettings'
 import { useInstallPrompt } from './useInstallPrompt'
 import { useSettings } from './useSettings'
 
@@ -61,6 +62,8 @@ export function SettingsView() {
       </section>
 
       <VoiceSettings />
+
+      <ThemeSettings />
 
       <section aria-labelledby="time-h" className="card">
         <fieldset>
