@@ -21,3 +21,32 @@ export function playBeep() {
     osc.onended = () => { void ctx.close() }
   } catch { /* autoplay blocked or unsupported: the toast still shows */ }
 }
+
+// Reads text aloud with the browser's built-in text-to-speech. Returns false if speech is unsupported.
+export function speak(text: string): boolean {
+  try {
+    if (!('speechSynthesis' in window)) return false
+    const synth = window.speechSynthesis
+    synth.cancel()
+    const u = new SpeechSynthesisUtterance(text)
+    u.lang = document.documentElement.lang || 'en-US'
+    u.onerror = e => { if (e.error === 'not-allowed') playBeep() }
+    synth.speak(u)
+    return true
+  } catch { return false }
+}
+
+// Browsers only allow speech after the user has interacted with the page (iOS needs a tap).
+// The first tap or key press unlocks speech with a silent utterance.
+function unlockSpeech() {
+  try {
+    if (!('speechSynthesis' in window)) return
+    const u = new SpeechSynthesisUtterance('')
+    u.volume = 0
+    window.speechSynthesis.speak(u)
+  } catch { /* ignore */ }
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('pointerdown', unlockSpeech, { once: true })
+  window.addEventListener('keydown', unlockSpeech, { once: true })
+}

@@ -1,5 +1,6 @@
 import type { Reminder } from '../../lib/reminders'
-import { emitToast, playBeep } from './toast'
+import { formatTime } from '../../lib/time'
+import { emitToast, playBeep, speak } from './toast'
 
 export type PermissionState = 'unsupported' | NotificationPermission
 
@@ -29,5 +30,5 @@ export async function deliver(r: Reminder) {
     } catch { /* fall through to the in-app alert */ }
   }
   emitToast({ title: r.title, body })
-  playBeep()
+  if (!speak(`Reminder. ${r.title}. Due at ${formatTime(r.time, '12h')}.`)) playBeep()
 }
