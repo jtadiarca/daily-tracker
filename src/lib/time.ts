@@ -1,6 +1,6 @@
-let current: '12h' | '24h' = '24h'
+let current: '12h' | '24h' = '12h'
 
-// Set from the Settings screen; formatTime uses it when no format is passed.
+// Set from the Settings screen; formatTime uses it when no format is passed. The default is 12-hour.
 export function setTimeFormat(f: '12h' | '24h') { current = f }
 
 export function formatTime(hhmm: string, fmt: '12h' | '24h' = current): string {

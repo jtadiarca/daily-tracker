@@ -1,9 +1,12 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { formatTime, setTimeFormat } from './time'
 
-afterEach(() => setTimeFormat('24h'))
+afterEach(() => setTimeFormat('12h'))
 
 describe('formatTime', () => {
+  it('defaults to 12-hour', () => {
+    expect(formatTime('15:00')).toBe('3:00 PM')
+  })
   it('returns 24-hour times unchanged', () => {
     expect(formatTime('09:05', '24h')).toBe('09:05')
   })
@@ -15,7 +18,7 @@ describe('formatTime', () => {
     expect(formatTime('23:59', '12h')).toBe('11:59 PM')
   })
   it('uses the configured default format', () => {
-    setTimeFormat('12h')
-    expect(formatTime('15:00')).toBe('3:00 PM')
+    setTimeFormat('24h')
+    expect(formatTime('15:00')).toBe('15:00')
   })
 })
