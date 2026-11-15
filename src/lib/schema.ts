@@ -14,10 +14,15 @@ const timeStr = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be a time li
 // A date, optionally followed by @HH:mm for tasks that appear several times a day.
 const slotDateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}(@([01]\d|2[0-3]):[0-5]\d)?$/, 'must be a date like 2026-11-15, optionally followed by @09:30')
 const isoUtc = z.string().datetime({ message: 'must be an ISO 8601 UTC timestamp' })
+const dayOfMonth = z.number().int().refine(n => n === -1 || (n >= 1 && n <= 31), 'must be 1 to 31, or -1 for the last day')
+const weekOfMonth = z.number().int().refine(n => [1, 2, 3, 4, -1].includes(n), 'must be 1, 2, 3, 4 or -1 for the last')
 
 export const RecurrenceSchema = z.object({
-  type: z.enum(['none', 'daily', 'weekdays', 'weekly']),
+  type: z.enum(['none', 'daily', 'weekdays', 'weekly', 'monthly', 'monthlyWeekday', 'yearly']),
+  interval: z.number().int().min(1).max(999).optional(),
   daysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
+  daysOfMonth: z.array(dayOfMonth).min(1).max(2).optional(),
+  weekOfMonth: weekOfMonth.optional(),
   endDate: dateStr.optional(),
   skipDates: z.array(dateStr).optional(),
   rescheduledDates: z.array(slotDateStr).optional(),

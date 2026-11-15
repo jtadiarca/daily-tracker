@@ -5,11 +5,12 @@ const ISO = '2026-11-15T12:00:00.000Z'
 const task = { id: 't1', title: 'Take meds', startDate: '2026-11-15', time: '09:00', recurrence: { type: 'daily' }, reminderOffsetMin: 15, createdAt: ISO, updatedAt: ISO }
 const completion = { id: 't1_2026-11-15', taskId: 't1', date: '2026-11-15', completedAt: ISO, updatedAt: ISO }
 const envelope = (over: Record<string, unknown> = {}) => ({
-  app: 'daily-task-tracker', schemaVersion: 2, exportedAt: ISO, deviceId: 'dev-1',
+  app: 'daily-task-tracker', schemaVersion: 3, exportedAt: ISO, deviceId: 'dev-1',
   data: { tasks: [task], completions: [completion], settings: {} }, ...over,
 })
 const parse = (o: unknown) => parseBackupText(JSON.stringify(o))
 const errorOf = (r: ReturnType<typeof parseBackupText>) => (r.ok ? '' : r.error)
+const withRecurrence = (recurrence: Record<string, unknown>) => envelope({ data: { tasks: [{ ...task, recurrence }], completions: [] } })
 
 describe('parseBackupText', () => {
   it('accepts a valid backup', () => {
@@ -17,10 +18,12 @@ describe('parseBackupText', () => {
     expect(r.ok).toBe(true)
     if (r.ok) expect(datasetFromEnvelope(r.envelope)).toMatchObject({ tasks: [{ id: 't1' }], completions: [{ id: 't1_2026-11-15' }], settings: [] })
   })
-  it('upgrades and accepts a version 1 backup', () => {
-    const r = parse(envelope({ schemaVersion: 1 }))
-    expect(r.ok).toBe(true)
-    if (r.ok) expect(r.envelope.schemaVersion).toBe(2)
+  it('upgrades and accepts version 1 and version 2 backups', () => {
+    for (const schemaVersion of [1, 2]) {
+      const r = parse(envelope({ schemaVersion }))
+      expect(r.ok).toBe(true)
+      if (r.ok) expect(r.envelope.schemaVersion).toBe(3)
+    }
   })
   it('accepts several times a day with per-time completions', () => {
     const multi = { ...task, times: ['08:00', '20:00'], timesFrom: '2026-11-15' }
@@ -30,8 +33,24 @@ describe('parseBackupText', () => {
     if (r.ok) expect(r.envelope.data.completions[0].slot).toBe('08:00')
   })
   it('accepts a rescheduled time on a repeating task', () => {
-    const t = { ...task, recurrence: { type: 'daily', rescheduledDates: ['2026-11-14', '2026-11-15@08:00'] } }
-    expect(parse(envelope({ data: { tasks: [t], completions: [] } })).ok).toBe(true)
+    expect(parse(withRecurrence({ type: 'daily', rescheduledDates: ['2026-11-14', '2026-11-15@08:00'] })).ok).toBe(true)
+  })
+  it('accepts the new repeat options and an end date', () => {
+    expect(parse(withRecurrence({ type: 'weekly', interval: 2, daysOfWeek: [1, 5], endDate: '2026-12-31' })).ok).toBe(true)
+    expect(parse(withRecurrence({ type: 'monthly', daysOfMonth: [15, -1] })).ok).toBe(true)
+    expect(parse(withRecurrence({ type: 'monthly', interval: 3 })).ok).toBe(true)
+    expect(parse(withRecurrence({ type: 'monthlyWeekday', weekOfMonth: -1, daysOfWeek: [5] })).ok).toBe(true)
+    expect(parse(withRecurrence({ type: 'yearly', interval: 2 })).ok).toBe(true)
+  })
+  it('rejects invalid repeat settings', () => {
+    expect(parse(withRecurrence({ type: 'fortnightly' })).ok).toBe(false)
+    expect(parse(withRecurrence({ type: 'daily', interval: 0 })).ok).toBe(false)
+    expect(parse(withRecurrence({ type: 'daily', interval: 1.5 })).ok).toBe(false)
+    expect(parse(withRecurrence({ type: 'monthly', daysOfMonth: [0] })).ok).toBe(false)
+    expect(parse(withRecurrence({ type: 'monthly', daysOfMonth: [32] })).ok).toBe(false)
+    expect(parse(withRecurrence({ type: 'monthly', daysOfMonth: [1, 2, 3] })).ok).toBe(false)
+    expect(parse(withRecurrence({ type: 'monthlyWeekday', weekOfMonth: 5 })).ok).toBe(false)
+    expect(parse(withRecurrence({ type: 'daily', endDate: '2026-02-31' })).ok).toBe(false)
   })
   it('rejects a single entry in times and a bad time in times', () => {
     expect(parse(envelope({ data: { tasks: [{ ...task, times: ['08:00'] }], completions: [] } })).ok).toBe(false)
@@ -58,7 +77,7 @@ describe('parseBackupText', () => {
     expect(errorOf(parse(rest))).toMatch(/schema version/)
   })
   it('rejects a newer schema version', () => {
-    expect(errorOf(parse(envelope({ schemaVersion: 3 })))).toMatch(/newer version/)
+    expect(errorOf(parse(envelope({ schemaVersion: 4 })))).toMatch(/newer version/)
   })
   it('rejects a task with no title and names it', () => {
     const bad = { ...task, title: undefined }

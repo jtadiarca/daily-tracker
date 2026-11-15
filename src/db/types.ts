@@ -1,5 +1,12 @@
-export type RecurrenceType = 'none' | 'daily' | 'weekdays' | 'weekly'
-export interface Recurrence { type: RecurrenceType; daysOfWeek?: number[]; endDate?: string; skipDates?: string[]; rescheduledDates?: string[] }
+export type RecurrenceType = 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'monthlyWeekday' | 'yearly'
+export interface Recurrence {
+  type: RecurrenceType
+  interval?: number             // every N days, weeks, months or years (default 1), counted from the start date
+  daysOfWeek?: number[]         // weekly: the days to repeat on (0 = Sunday); monthlyWeekday: the one weekday
+  daysOfMonth?: number[]        // monthly: one or two days, 1 to 31, or -1 for the last day (default: the start date's day)
+  weekOfMonth?: number          // monthlyWeekday: 1 to 4, or -1 for the last (default: the start date's)
+  endDate?: string; skipDates?: string[]; rescheduledDates?: string[]
+}
 export interface Task {
   id: string; title: string; notes?: string; startDate: string
   time?: string                 // single time of day (HH:mm); also the older single time when times is set
