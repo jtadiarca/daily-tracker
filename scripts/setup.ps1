@@ -110,6 +110,36 @@ function Run-Npm([string[]]$NpmArgs) {
   if ($LASTEXITCODE -ne 0) { throw "npm $($NpmArgs -join ' ') failed (exit code $LASTEXITCODE)." }
 }
 
+# Runs a program and returns its exit code and output. Windows PowerShell 5.1 treats anything a program writes
+# to its error output as a fatal error when $ErrorActionPreference is Stop, and NSSM reports even success there
+# ("STOP: The operation completed successfully"), so relax that just for the call.
+function Invoke-Native([string]$exe, [string[]]$argv) {
+  $old = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    $out = & $exe @argv 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -and $_ -ne 'System.Management.Automation.RemoteException' }
+    $code = $LASTEXITCODE
+  } catch {
+    $out = @($_.Exception.Message); $code = -1
+  } finally { $ErrorActionPreference = $old }
+  # NSSM writes UTF-16, which shows up with NUL characters in between.
+  return [pscustomobject]@{ Code = $code; Output = (($out -join "`n") -replace "`0", '').Trim() }
+}
+
+# Stops and deletes the service: Windows first, then NSSM, then sc.exe. Waits until it is gone.
+function Stop-AndDelete-DttService($nssm) {
+  Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+  for ($i = 0; $i -lt 40 -and "$((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status)" -eq 'Running'; $i++) { Start-Sleep -Milliseconds 500 }
+  if ($nssm -and "$((Get-Service -Name $ServiceName -ErrorAction SilentlyContinue).Status)" -eq 'Running') { [void](Invoke-Native $nssm @('stop', $ServiceName)) }
+  $r = $null
+  if ($nssm) { $r = Invoke-Native $nssm @('remove', $ServiceName, 'confirm') }
+  if (-not $nssm -or $r.Code -ne 0) { $r = Invoke-Native 'sc.exe' @('delete', $ServiceName) }
+  for ($i = 0; $i -lt 20 -and (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 500 }
+  if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+    throw "The old $ServiceName service could not be removed ($($r.Output)). Close any open Services window, or restart Windows, then run this again."
+  }
+}
+
 # NSSM wraps a normal program (here: node) so Windows can run it as a service.
 function Find-Nssm {
   $cmd = Get-Command nssm -ErrorAction SilentlyContinue
@@ -127,14 +157,7 @@ function Find-Nssm {
 function Remove-DttService {
   $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
   if (-not $svc) { Ok "The $ServiceName service is not installed."; return }
-  $nssm = Find-Nssm
-  if ($nssm) {
-    & $nssm stop $ServiceName 2>&1 | Out-Null
-    & $nssm remove $ServiceName confirm 2>&1 | Out-Null
-  } else {
-    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-    & sc.exe delete $ServiceName | Out-Null
-  }
+  Stop-AndDelete-DttService (Find-Nssm)
   Ok "Removed the $ServiceName service."
 }
 
@@ -150,8 +173,7 @@ function Install-DttService {
 
   if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
     Warn "Replacing the existing $ServiceName service..."
-    & $nssm stop $ServiceName 2>&1 | Out-Null
-    & $nssm remove $ServiceName confirm 2>&1 | Out-Null
+    Stop-AndDelete-DttService $nssm
   }
 
   $logDir = Join-Path $env:ProgramData 'DailyTaskTracker'
@@ -167,7 +189,7 @@ function Install-DttService {
   & $nssm set $ServiceName AppStdout (Join-Path $logDir 'out.log') | Out-Null
   & $nssm set $ServiceName AppStderr (Join-Path $logDir 'error.log') | Out-Null
   & $nssm set $ServiceName AppRotateFiles 1 | Out-Null
-  & $nssm start $ServiceName | Out-Null
+  [void](Invoke-Native $nssm @('start', $ServiceName))
 
   $up = $false
   for ($i = 0; $i -lt 15 -and -not $up; $i++) {

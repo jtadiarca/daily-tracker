@@ -72,6 +72,32 @@ function Find-Nssm {
   return $null
 }
 
+# Runs a program and returns its exit code and output. Windows PowerShell 5.1 treats anything a program writes
+# to its error output as a fatal error when $ErrorActionPreference is Stop, and NSSM reports even success there
+# ("STOP: The operation completed successfully"), so relax that just for the call.
+function Invoke-Native([string]$exe, [string[]]$argv) {
+  $old = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    $out = & $exe @argv 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -and $_ -ne 'System.Management.Automation.RemoteException' }
+    $code = $LASTEXITCODE
+  } catch {
+    $out = @($_.Exception.Message); $code = -1
+  } finally { $ErrorActionPreference = $old }
+  # NSSM writes UTF-16, which shows up with NUL characters in between.
+  return [pscustomobject]@{ Code = $code; Output = (($out -join "`n") -replace "`0", '').Trim() }
+}
+
+# Waits up to the given seconds for the service to reach a state (or to be gone). True when it did.
+function Wait-ServiceState([string]$state, [int]$seconds) {
+  for ($i = 0; $i -lt $seconds * 2; $i++) {
+    $s = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if (-not $s -or "$($s.Status)" -eq $state) { return $true }
+    Start-Sleep -Milliseconds 500
+  }
+  return $false
+}
+
 function Get-StartupShortcut { return (Join-Path ([Environment]::GetFolderPath('Startup')) 'Daily Task Tracker.lnk') }
 
 # The part that needs administrator rights: the service, its logs and NSSM.
@@ -83,22 +109,40 @@ function Remove-AdminParts {
   } else {
     $nssm = Find-Nssm
     if ($nssm) {
-      $appDir = (& $nssm get $ServiceName AppDirectory 2>$null | Out-String).Trim()
+      $appDir = (Invoke-Native $nssm @('get', $ServiceName, 'AppDirectory')).Output
       if ($appDir -and $ProjectDir -and ($appDir.TrimEnd('\') -ne $ProjectDir.TrimEnd('\'))) {
         Warn "Note: the service was serving a copy of the app in $appDir"
       }
-      & $nssm stop $ServiceName 2>&1 | Out-Null
-      & $nssm remove $ServiceName confirm 2>&1 | Out-Null
-    } else {
-      Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-      & sc.exe delete $ServiceName | Out-Null
     }
+
+    # 1. Stop it. Try Windows first, then NSSM, then end the processes as a last resort.
+    Ok 'Stopping the service...'
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    if (-not (Wait-ServiceState 'Stopped' 20) -and $nssm) { [void](Invoke-Native $nssm @('stop', $ServiceName)) }
+    if (-not (Wait-ServiceState 'Stopped' 10)) {
+      $svcPid = (Get-CimInstance Win32_Service -Filter "Name='$ServiceName'").ProcessId
+      if ($svcPid) {
+        Warn 'The service did not stop by itself, so its processes are being ended.'
+        Get-CimInstance Win32_Process -Filter "ParentProcessId=$svcPid" | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+        Stop-Process -Id $svcPid -Force -ErrorAction SilentlyContinue
+        [void](Wait-ServiceState 'Stopped' 10)
+      }
+    }
+
+    # 2. Delete it, with NSSM if possible, otherwise with Windows' own sc.exe.
+    $result = $null
+    if ($nssm) { $result = Invoke-Native $nssm @('remove', $ServiceName, 'confirm') }
+    if (-not $nssm -or $result.Code -ne 0) { $result = Invoke-Native 'sc.exe' @('delete', $ServiceName) }
+
     # Windows can take a moment to let go of a deleted service.
-    for ($i = 0; $i -lt 10 -and (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 500 }
-    if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
-      Warn 'The service is marked for removal and will disappear after a restart.'
-    } else {
+    for ($i = 0; $i -lt 20 -and (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 500 }
+    if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) {
       Ok 'Removed the service. Nothing is served on http://localhost:4173 any more.'
+    } elseif ($result.Code -eq 0 -or $result.Code -eq 1072) {
+      # 1072: already marked for deletion, usually because a Services window is open.
+      Warn 'The service is marked for removal and will disappear after a restart (or after closing any open Services window).'
+    } else {
+      throw "Windows could not remove the service: $($result.Output)"
     }
   }
 
@@ -119,8 +163,8 @@ function Remove-AdminParts {
     } elseif (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
       Warn 'winget was not found, so NSSM was left in place.'
     } else {
-      & winget uninstall --id NSSM.NSSM -e --source winget --accept-source-agreements 2>&1 | Out-Host
-      if ($LASTEXITCODE -eq 0) { Ok 'Uninstalled NSSM.' }
+      $r = Invoke-Native 'winget' @('uninstall', '--id', 'NSSM.NSSM', '-e', '--source', 'winget', '--accept-source-agreements')
+      if ($r.Code -eq 0) { Ok 'Uninstalled NSSM.' }
       else { Warn 'winget could not uninstall NSSM (it may not have been installed with winget). You can leave it; it does nothing on its own.' }
     }
   }
