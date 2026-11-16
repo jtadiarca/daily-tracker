@@ -8,6 +8,8 @@ import { groupsByCategory, type CategoryView } from '../categories/useCategoryVi
 import { formatTime } from '../../lib/time'
 import { completionSlot } from '../../lib/slots'
 import { DeleteDialog } from '../../components/DeleteDialog'
+import { format } from 'date-fns'
+import { parseDateStr } from '../../lib/dates'
 export function TodayView({ date, now, categories, view, onEdit }: { date: string; now: Date; categories: Category[]; view: CategoryView; onEdit: (task: Task) => void }) {
   const items = useDayTasks(date, now)
   const filter = effectiveFilter(view.filter, categories)
@@ -36,7 +38,15 @@ export function TodayView({ date, now, categories, view, onEdit }: { date: strin
   // Inside a category heading the tasks stay in time order, with tasks that have no time last.
   const groups = byCategory ? groupByCategory([...timed, ...anytime], categories) : []
   return <section className="page" aria-labelledby="today-heading">
-    <h1 id="today-heading" className="mb-4 text-3xl">Today</h1>
+    {/* The date comes from the same clock as the task list, so it changes at midnight along with the tasks. */}
+    <h1 id="today-heading" className="text-3xl">Today</h1>
+    <p className="mb-5 mt-2">
+      <time dateTime={date} className="inline-flex flex-wrap items-center gap-x-2 rounded-full bg-primary-container px-4 py-2 text-on-primary-container shadow-m3-1">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" /></svg>
+        <span className="text-xl font-semibold">{format(parseDateStr(date), 'EEEE')},</span>
+        <span className="text-xl">{format(parseDateStr(date), 'MMMM d, yyyy')}</span>
+      </time>
+    </p>
     <form className="mb-4" onSubmit={e => { e.preventDefault(); if (title.trim()) void run(async () => { await createTask({ title, startDate: date, categoryId: categoryForFilter(filter, categories) }); setTitle('') }) }}>
       <label htmlFor="quick" className="sr-only">Quick add task</label><input id="quick" value={title} onChange={e => setTitle(e.target.value)} placeholder="Add a task and press Enter" className="w-full rounded-full bg-surface-container-high px-5 py-3 text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary" />
     </form>
