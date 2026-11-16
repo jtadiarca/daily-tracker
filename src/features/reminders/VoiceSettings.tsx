@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { Select } from '../../components/Select'
 import { findVoice, PITCH_RANGE, pitchLabel, RATE_RANGE, REMINDER_REPEATS, speedLabel } from '../../lib/voice'
 import { formatTime } from '../../lib/time'
 import { speak, stopSpeaking } from './toast'
@@ -36,14 +37,8 @@ export function VoiceSettings() {
           {!prefs.enabled && <p className="text-sm text-on-surface-variant">Reminders will play a short beep instead. Notifications and pop-ups still appear.</p>}
 
           <fieldset disabled={!prefs.enabled} className="space-y-4 disabled:opacity-50">
-            <label className="field-label">Voice
-              <select className="field mt-1" value={saved ? saved.voiceURI : ''} onChange={e => setVoicePrefs({ voiceURI: e.target.value || null })}>
-                <option value="">System default</option>
-                {voices.map(v => (
-                  <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang}){v.localService ? '' : ' · needs internet'}</option>
-                ))}
-              </select>
-            </label>
+            <Select label="Voice" disabled={!prefs.enabled} value={saved ? saved.voiceURI : ''} onChange={v => setVoicePrefs({ voiceURI: v || null })}
+              options={[{ value: '', label: 'System default' }, ...voices.map(v => ({ value: v.voiceURI, label: `${v.name} (${v.lang})${v.localService ? '' : ' · needs internet'}` }))]} />
             {voices.length === 0 && <p className="text-sm text-on-surface-variant">Loading voices… If none appear, your browser only offers its default voice.</p>}
             {missing && <p role="status" className="text-sm text-on-surface-variant">The voice you chose isn’t available right now, so the system default is used.</p>}
 

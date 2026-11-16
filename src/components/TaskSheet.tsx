@@ -10,11 +10,23 @@ import {
   type RepeatForm, type RepeatPreset, type RepeatUnit,
 } from '../lib/repeat'
 import { deriveStatus } from '../lib/status'
+import { Select } from './Select'
+import { DatePicker } from './DatePicker'
+import { TimePicker } from './TimePicker'
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const FULL_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const WEEKS: Array<[number, string]> = [[1, 'First'], [2, 'Second'], [3, 'Third'], [4, 'Fourth'], [-1, 'Last']]
 const MONTH_DAYS = [...Array.from({ length: 31 }, (_, i) => i + 1), -1]
 const dayText = (n: number) => (n === -1 ? 'Last day of the month' : `The ${ordinal(n)}`)
+const MONTH_DAY_OPTIONS = MONTH_DAYS.map(n => ({ value: String(n), label: dayText(n) }))
+const REMINDER_OPTIONS = [
+  { value: 'default', label: 'Use default setting' }, { value: '-1', label: 'No reminder' }, { value: '0', label: 'At time of task' },
+  { value: '5', label: '5 minutes before' }, { value: '15', label: '15 minutes before' }, { value: '30', label: '30 minutes before' }, { value: '60', label: '1 hour before' },
+]
+const PRESET_OPTIONS = PRESET_ORDER.map(p => ({ value: p, label: PRESET_LABELS[p] }))
+const WEEK_OPTIONS = [{ value: '', label: 'Same as the start date' }, ...WEEKS.map(([n, label]) => ({ value: String(n), label }))]
+const WEEKDAY_OPTIONS = [{ value: '', label: 'Same as the start date' }, ...FULL_DAYS.map((label, d) => ({ value: String(d), label }))]
+const ENDS_OPTIONS = [{ value: 'never', label: 'Never' }, { value: 'date', label: 'On a date' }]
 const MAX_TIMES = 12
 const NEW_CATEGORY = '__new__'
 const EMPTY_FORM = formFromRecurrence()
@@ -98,14 +110,14 @@ export function TaskSheet({ open, task, date, categories, defaultCategoryId, onC
     <form onSubmit={save} className="space-y-4"><h2 id="task-heading" className="text-2xl">{task ? 'Edit task' : 'New task'}</h2>
     <label className="field-label">Title<input autoFocus required value={title} onChange={e => setTitle(e.target.value)} className="field mt-1" /></label>
     <label className="field-label">Notes<textarea value={notes} onChange={e => setNotes(e.target.value)} className="field mt-1" /></label>
-    <label className="field-label">Category<select className="field mt-1" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
-      <option value="">No category</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}<option value={NEW_CATEGORY}>New category…</option></select></label>
+    <Select label="Category" value={categoryId} onChange={setCategoryId}
+      options={[{ value: '', label: 'No category' }, ...categories.map(c => ({ value: c.id, label: c.name })), { value: NEW_CATEGORY, label: 'New category…' }]} />
     {categoryId === NEW_CATEGORY && <label className="field-label">New category name<input required autoFocus maxLength={MAX_CATEGORY_NAME} value={newCategory} onChange={e => setNewCategory(e.target.value)} className="field mt-1" /></label>}
-    <label className="field-label">{isRepeating ? 'Starts' : 'Date'}<input type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} className="field mt-1" /></label>
-    <label className="field-label">Time (optional)<input type="time" value={first} onChange={e => setSlotTimes(cur => e.target.value ? [e.target.value, ...cur.slice(1)] : [])} className="field mt-1" /></label>
+    <DatePicker label={isRepeating ? 'Starts' : 'Date'} required value={startDate} onChange={setStartDate} />
+    <TimePicker label="Time (optional)" value={first} onChange={v => setSlotTimes(cur => v ? [v, ...cur.slice(1)] : [])} />
     {slotTimes.length > 0 && <div className="space-y-2">
       {slotTimes.slice(1).map((t, i) => <div key={i} className="flex items-end gap-2">
-        <label className="field-label flex-1">Time {i + 2}<input type="time" required value={t} onChange={e => setSlotTimes(cur => cur.map((x, j) => j === i + 1 ? e.target.value : x))} className="field mt-1" /></label>
+        <TimePicker label={`Time ${i + 2}`} className="flex-1" required value={t} onChange={v => setSlotTimes(cur => cur.map((x, j) => j === i + 1 ? v : x))} />
         <button type="button" className="btn-text-error" aria-label={`Remove time ${i + 2}`} onClick={() => setSlotTimes(cur => cur.filter((_, j) => j !== i + 1))}>Remove</button>
       </div>)}
       {slotTimes.length < MAX_TIMES && <button type="button" className="btn-tonal" onClick={() => setSlotTimes(cur => [...cur, ''])}>Add another time</button>}
@@ -113,30 +125,28 @@ export function TaskSheet({ open, task, date, categories, defaultCategoryId, onC
     </div>}
     {first && <button type="button" className="btn-text" onClick={() => setSlotTimes([])}>Clear time</button>}
     {first && deriveStatus({ date: startDate, time: first, done: false, now: new Date() }) === 'missed' && <p role="status" className="rounded-m3-sm bg-tertiary-container p-3 text-sm text-on-tertiary-container">This time has passed. The occurrence will show as missed unless completed.</p>}
-    {first && <label className="field-label">Reminder<select className="field mt-1" value={reminder} onChange={e => setReminder(e.target.value)}>
-      <option value="default">Use default setting</option><option value="-1">No reminder</option><option value="0">At time of task</option>
-      <option value="5">5 minutes before</option><option value="15">15 minutes before</option><option value="30">30 minutes before</option><option value="60">1 hour before</option></select></label>}
+    {first && <Select label="Reminder" value={reminder} onChange={setReminder} options={REMINDER_OPTIONS} />}
 
-    <label className="field-label">Repeat<select className="field mt-1" value={repeat.preset} onChange={e => choosePreset(e.target.value as RepeatPreset)}>{PRESET_ORDER.map(p => <option key={p} value={p}>{PRESET_LABELS[p]}</option>)}</select></label>
+    <Select label="Repeat" value={repeat.preset} onChange={v => choosePreset(v as RepeatPreset)} options={PRESET_OPTIONS} />
     {repeat.preset === 'custom' && <div className="flex items-end gap-2">
       <label className="field-label w-24">Every<input type="number" min={1} max={999} required value={repeat.every || ''} onChange={e => setForm({ every: Number(e.target.value) })} className="field mt-1" /></label>
-      <label className="field-label flex-1">Unit<select className="field mt-1" value={repeat.unit} onChange={e => setForm({ unit: e.target.value as RepeatUnit })}>
-        <option value="day">{repeat.every === 1 ? 'day' : 'days'}</option><option value="week">{repeat.every === 1 ? 'week' : 'weeks'}</option><option value="month">{repeat.every === 1 ? 'month' : 'months'}</option><option value="year">{repeat.every === 1 ? 'year' : 'years'}</option></select></label>
+      <Select label="Unit" className="flex-1" value={repeat.unit} onChange={v => setForm({ unit: v as RepeatUnit })}
+        options={(['day', 'week', 'month', 'year'] as const).map(u => ({ value: u, label: repeat.every === 1 ? u : `${u}s` }))} />
     </div>}
     {showWeekDays && <fieldset><legend className="field-label mb-2">On these days</legend><div className="flex flex-wrap gap-2">{DAYS.map((label, day) => <label key={day} className={`chip ${repeat.days.includes(day) ? 'chip-selected' : ''}`}><input type="checkbox" className="sr-only" checked={repeat.days.includes(day)} onChange={() => setForm({ days: repeat.days.includes(day) ? repeat.days.filter(d => d !== day) : [...repeat.days, day].sort((a, b) => a - b) })} />{label}</label>)}</div><p className="mt-2 text-sm text-on-surface-variant">If none are selected, uses the start date’s weekday.</p></fieldset>}
-    {showMonthDay && <label className="field-label">On day<select className="field mt-1" value={repeat.monthDays[0] ?? ''} onChange={e => setForm({ monthDays: e.target.value === '' ? [] : [Number(e.target.value)] })}>
-      <option value="">Same day as the start date</option>{MONTH_DAYS.map(n => <option key={n} value={n}>{dayText(n)}</option>)}</select></label>}
+    {showMonthDay && <Select label="On day" value={String(repeat.monthDays[0] ?? '')} onChange={v => setForm({ monthDays: v === '' ? [] : [Number(v)] })}
+      options={[{ value: '', label: 'Same day as the start date' }, ...MONTH_DAY_OPTIONS]} />}
     {repeat.preset === 'semimonthly' && <div className="grid grid-cols-2 gap-3">
-      <label className="field-label">First day<select className="field mt-1" value={repeat.monthDays[0] ?? 1} onChange={e => setMonthDay(0, Number(e.target.value))}>{MONTH_DAYS.map(n => <option key={n} value={n}>{dayText(n)}</option>)}</select></label>
-      <label className="field-label">Second day<select className="field mt-1" value={repeat.monthDays[1] ?? 15} onChange={e => setMonthDay(1, Number(e.target.value))}>{MONTH_DAYS.map(n => <option key={n} value={n}>{dayText(n)}</option>)}</select></label>
+      <Select label="First day" value={String(repeat.monthDays[0] ?? 1)} onChange={v => setMonthDay(0, Number(v))} options={MONTH_DAY_OPTIONS} />
+      <Select label="Second day" value={String(repeat.monthDays[1] ?? 15)} onChange={v => setMonthDay(1, Number(v))} options={MONTH_DAY_OPTIONS} />
     </div>}
     {repeat.preset === 'monthlyWeekday' && <div className="grid grid-cols-2 gap-3">
-      <label className="field-label">Which week<select className="field mt-1" value={repeat.weekOfMonth ?? ''} onChange={e => setForm({ weekOfMonth: e.target.value === '' ? null : Number(e.target.value) })}><option value="">Same as the start date</option>{WEEKS.map(([n, label]) => <option key={n} value={n}>{label}</option>)}</select></label>
-      <label className="field-label">Weekday<select className="field mt-1" value={repeat.weekday ?? ''} onChange={e => setForm({ weekday: e.target.value === '' ? null : Number(e.target.value) })}><option value="">Same as the start date</option>{FULL_DAYS.map((label, d) => <option key={d} value={d}>{label}</option>)}</select></label>
+      <Select label="Which week" value={String(repeat.weekOfMonth ?? '')} onChange={v => setForm({ weekOfMonth: v === '' ? null : Number(v) })} options={WEEK_OPTIONS} />
+      <Select label="Weekday" value={String(repeat.weekday ?? '')} onChange={v => setForm({ weekday: v === '' ? null : Number(v) })} options={WEEKDAY_OPTIONS} />
     </div>}
     {isRepeating && <div className="space-y-3">
-      <label className="field-label">Ends<select className="field mt-1" value={endsOn ? 'date' : 'never'} onChange={e => setEndsOn(e.target.value === 'date')}><option value="never">Never</option><option value="date">On a date</option></select></label>
-      {endsOn && <label className="field-label">Last day<input type="date" required min={startDate} value={repeat.endDate} onChange={e => setForm({ endDate: e.target.value })} className="field mt-1" /></label>}
+      <Select label="Ends" value={endsOn ? 'date' : 'never'} onChange={v => setEndsOn(v === 'date')} options={ENDS_OPTIONS} />
+      {endsOn && <DatePicker label="Last day" required min={startDate} value={repeat.endDate} onChange={v => setForm({ endDate: v })} />}
       {summary && <p role="status" className="rounded-m3-sm bg-surface-container-high p-3 text-sm text-on-surface">{summary}{preview && intervalOf(preview) > 1 ? '. Counting starts from the start date.' : ''}</p>}
     </div>}
     {task && task.recurrence.type !== 'none' && <p className="text-sm text-on-surface-variant">Edits apply to the whole series, including historical labels and schedules. Existing completion records remain unchanged.</p>}

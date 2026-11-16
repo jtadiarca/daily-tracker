@@ -1,4 +1,5 @@
 import { updateSettings } from '../../db/settingsRepo'
+import { Select } from '../../components/Select'
 import { BackupSection } from '../backup/BackupSection'
 import { CategoryManager } from '../categories/CategoryManager'
 import { VoiceSettings } from '../reminders/VoiceSettings'
@@ -7,6 +8,11 @@ import { PROBLEM_TEXT, useNotificationPermission } from '../reminders/usePermiss
 import { ThemeSettings } from './ThemeSettings'
 import { useInstallPrompt } from './useInstallPrompt'
 import { useSettings } from './useSettings'
+
+const DEFAULT_REMINDER_OPTIONS = [
+  { value: 'none', label: 'No reminder' }, { value: '0', label: 'At time of task' }, { value: '5', label: '5 minutes before' },
+  { value: '15', label: '15 minutes before' }, { value: '30', label: '30 minutes before' }, { value: '60', label: '1 hour before' },
+]
 
 const PERM_TEXT: Record<PermissionState, string> = {
   granted: 'Allowed',
@@ -40,17 +46,8 @@ export function SettingsView() {
 
       <section aria-labelledby="rem-h" className="card">
         <h2 id="rem-h" className="mb-3 text-xl">Reminders</h2>
-        <label className="field-label mb-4">Default reminder for timed tasks
-          <select className="field mt-1" value={s.defaultReminderOffsetMin == null ? 'none' : String(s.defaultReminderOffsetMin)}
-            onChange={e => void updateSettings({ defaultReminderOffsetMin: e.target.value === 'none' ? null : Number(e.target.value) })}>
-            <option value="none">No reminder</option>
-            <option value="0">At time of task</option>
-            <option value="5">5 minutes before</option>
-            <option value="15">15 minutes before</option>
-            <option value="30">30 minutes before</option>
-            <option value="60">1 hour before</option>
-          </select>
-        </label>
+        <Select label="Default reminder for timed tasks" className="mb-4" value={s.defaultReminderOffsetMin == null ? 'none' : String(s.defaultReminderOffsetMin)}
+          onChange={v => void updateSettings({ defaultReminderOffsetMin: v === 'none' ? null : Number(v) })} options={DEFAULT_REMINDER_OPTIONS} />
         <p>Notification permission: <strong>{PERM_TEXT[perm]}</strong></p>
         {perm === 'default' && <button className="btn-filled mt-3" disabled={asking && problem !== 'waiting'} onClick={() => void ask()}>Turn on reminders</button>}
         {perm === 'default' && problem && <p role="status" className="mt-2 rounded-m3-sm bg-secondary-container p-3 text-sm text-on-secondary-container">{PROBLEM_TEXT[problem]}</p>}

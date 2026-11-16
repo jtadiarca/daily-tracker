@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { differenceInCalendarDays, format } from 'date-fns'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ProgressRing } from '../../components/ProgressRing'
+import { DatePicker } from '../../components/DatePicker'
 import { markDoneLate, rescheduleToToday } from '../../db/dashboardActions'
 import { addDaysStr, parseDateStr, todayStr } from '../../lib/dates'
 import { categoryOf, effectiveFilter, FILTER_ALL, FILTER_NONE, matchesFilter } from '../../lib/categories'
@@ -114,8 +115,8 @@ export function DashboardView({ now }: { now: Date }) {
         </div>
         {preset === 'custom' && (
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <label className="field-label">From<input type="date" max={today} value={customFrom} onChange={e => setCustomFrom(e.target.value)} className="field mt-1" /></label>
-            <label className="field-label">To<input type="date" max={today} value={customTo} onChange={e => setCustomTo(e.target.value)} className="field mt-1" /></label>
+            <DatePicker label="From" required max={today} value={customFrom} onChange={setCustomFrom} />
+            <DatePicker label="To" required max={today} value={customTo} onChange={setCustomTo} />
           </div>
         )}
         {!rangeValid && <p role="alert" className="mt-3 text-error">Choose a range of up to 366 days, with the start on or before the end.</p>}

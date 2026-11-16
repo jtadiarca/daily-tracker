@@ -93,11 +93,6 @@
   .field { @apply w-full rounded-m3-xs border border-outline bg-transparent px-4 py-3 text-base text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary; }
   .field-label { @apply block text-sm text-on-surface-variant; }
 
-  /* Dropdowns: the open list is drawn by the browser and does not inherit a transparent background,
-     so give the select and its options real theme colors (otherwise the list is white in dark mode). */
-  select.field { background-color: rgb(var(--md-surface-container-low)); }
-  select.field option, select.field optgroup { background-color: rgb(var(--md-surface-container-high)); color: rgb(var(--md-on-surface)); }
-
   /* Cards */
   .card { @apply rounded-m3-md bg-surface-container-low p-4 shadow-m3-1; }
   .card-filled { @apply rounded-m3-md bg-surface-container-highest p-4; }
