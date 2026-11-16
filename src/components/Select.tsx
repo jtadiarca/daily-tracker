@@ -72,11 +72,11 @@ export function Select({ label, value, options, onChange, className = '', disabl
   }
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative min-w-0 ${className}`}>
       <span id={`${id}-label`} className="field-label">{label}</span>
       <button ref={button} type="button" id={`${id}-field`} disabled={disabled}
         aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? `${id}-list` : undefined}
-        aria-labelledby={`${id}-label ${id}-field`}
+        aria-labelledby={`${id}-label ${id}-field`} title={current?.label}
         onClick={() => (open ? close() : show())} onKeyDown={onFieldKey}
         className={`field mt-1 flex items-center gap-2 text-left disabled:cursor-not-allowed ${open ? 'border-primary ring-1 ring-primary' : ''}`}>
         <span className="min-w-0 flex-1 truncate">{current?.label ?? ''}</span>

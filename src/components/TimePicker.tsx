@@ -170,7 +170,7 @@ export function TimePicker({ label, value, onChange, required, className = '' }:
   )
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative min-w-0 ${className}`}>
       <span id={`${id}-label`} className="field-label">{label}</span>
       <button ref={field} type="button" id={`${id}-field`} aria-haspopup="dialog" aria-expanded={open}
         aria-labelledby={`${id}-label ${id}-field`} onClick={show}

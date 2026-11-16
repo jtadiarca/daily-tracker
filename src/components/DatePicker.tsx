@@ -90,7 +90,7 @@ export function DatePicker({ label, value, onChange, min, max, required, classNa
   )
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative min-w-0 ${className}`}>
       <span id={`${id}-label`} className="field-label">{label}</span>
       <button ref={button} type="button" id={`${id}-field`} aria-haspopup="dialog" aria-expanded={open}
         aria-labelledby={`${id}-label ${id}-field`} onClick={() => (open ? close() : show())}
