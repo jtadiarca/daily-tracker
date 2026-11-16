@@ -10,6 +10,8 @@
   4. Deletes the installed packages (node_modules) and the build output (dist).
   5. Optionally uninstalls NSSM, the service helper setup installed, when no other service uses it.
   6. Optionally deletes the whole project folder.
+  If the service was serving a different copy of the app (for example one unzipped into C:\Program Files),
+  that copy's node_modules and dist are deleted too, and you are asked whether to delete that whole copy.
 
   It does not uninstall Git or Node.js, which other programs may use, and it does not change the PowerShell
   execution policy back. Your tasks are stored in the browser, not in the project folder: see the end of
@@ -24,6 +26,10 @@
 .PARAMETER DeleteProject
   Also delete the project folder this script belongs to, once this window closes.
 
+.PARAMETER DeleteServiceCopy
+  When the service was serving a different copy of the app, delete that whole copy, not just its
+  node_modules and dist.
+
 .EXAMPLE
   .\uninstall.cmd
 
@@ -35,8 +41,10 @@ param(
   [switch]$Yes,
   [switch]$RemoveNssm,
   [switch]$DeleteProject,
+  [switch]$DeleteServiceCopy,
   [switch]$Elevated,
-  [switch]$ServiceOnly
+  [switch]$ServiceOnly,
+  [string]$ServiceCopy
 )
 
 $ErrorActionPreference = 'Stop'
@@ -98,6 +106,52 @@ function Wait-ServiceState([string]$state, [int]$seconds) {
   return $false
 }
 
+# The folder the service serves the app from, as setup.ps1 told NSSM (readable without administrator rights).
+function Get-ServiceAppDir {
+  $key = "HKLM:\SYSTEM\CurrentControlSet\Services\$ServiceName\Parameters"
+  $dir = (Get-ItemProperty -Path $key -Name AppDirectory -ErrorAction SilentlyContinue).AppDirectory
+  if ($dir) { return $dir.TrimEnd('\') }
+  return $null
+}
+
+# Only folders that really hold this app are ever cleaned up or deleted.
+function Test-AppFolder([string]$dir) {
+  $pkg = Join-Path $dir 'package.json'
+  if (-not $dir -or -not (Test-Path -LiteralPath $pkg)) { return $false }
+  return [bool](Select-String -LiteralPath $pkg -Pattern '"name":\s*"daily-tracker"' -Quiet)
+}
+
+function Same-Folder([string]$a, [string]$b) { return $a -and $b -and ($a.TrimEnd('\') -eq $b.TrimEnd('\')) }
+
+# True when a git copy has work that is not on GitHub (uncommitted files or commits not pushed).
+function Test-UnsavedWork([string]$dir) {
+  if (-not (Test-Path -LiteralPath (Join-Path $dir '.git')) -or -not (Get-Command git -ErrorAction SilentlyContinue)) { return $false }
+  $old = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+  try {
+    $dirty = & git -C $dir status --porcelain 2>$null
+    $ahead = & git -C $dir rev-list --count '@{u}..HEAD' 2>$null
+  } finally { $ErrorActionPreference = $old }
+  return [bool]($dirty -or ($ahead -and [int]$ahead -gt 0))
+}
+
+# Deletes node_modules and dist from a copy of the app, or the whole copy.
+function Clear-AppFolder([string]$dir, [bool]$whole) {
+  if ($whole) {
+    Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
+    if (Test-Path -LiteralPath $dir) { Warn "Could not delete all of $dir (a file may be in use). Delete it by hand." }
+    else { Ok "Deleted $dir" }
+    return
+  }
+  foreach ($name in 'node_modules', 'dist') {
+    $path = Join-Path $dir $name
+    if (Test-Path -LiteralPath $path) {
+      Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction SilentlyContinue
+      if (Test-Path -LiteralPath $path) { Warn "Could not delete all of $path (a file may be in use). Delete it by hand." }
+      else { Ok "Deleted $path" }
+    }
+  }
+}
+
 function Get-StartupShortcut { return (Join-Path ([Environment]::GetFolderPath('Startup')) 'Daily Task Tracker.lnk') }
 
 # The part that needs administrator rights: the service, its logs and NSSM.
@@ -108,12 +162,6 @@ function Remove-AdminParts {
     Ok 'The service is not installed.'
   } else {
     $nssm = Find-Nssm
-    if ($nssm) {
-      $appDir = (Invoke-Native $nssm @('get', $ServiceName, 'AppDirectory')).Output
-      if ($appDir -and $ProjectDir -and ($appDir.TrimEnd('\') -ne $ProjectDir.TrimEnd('\'))) {
-        Warn "Note: the service was serving a copy of the app in $appDir"
-      }
-    }
 
     # 1. Stop it. Try Windows first, then NSSM, then end the processes as a last resort.
     Ok 'Stopping the service...'
@@ -153,6 +201,17 @@ function Remove-AdminParts {
     else { Ok "Deleted $LogDir" }
   } else {
     Ok 'There are no service logs.'
+  }
+
+  # The other copy of the app the service was serving. Done here because the service had its files open
+  # until now, and a copy in C:\Program Files can only be changed with administrator rights.
+  if ($ServiceCopy) {
+    Step "Cleaning up the copy the service used: $ServiceCopy"
+    if (-not (Test-AppFolder $ServiceCopy)) { Warn 'That folder no longer looks like Daily Task Tracker, so it was left alone.' }
+    else {
+      Clear-AppFolder $ServiceCopy ([bool]$DeleteServiceCopy)
+      if (-not $DeleteServiceCopy -and (Test-Path -LiteralPath $ServiceCopy)) { Ok "Its source code is still in $ServiceCopy." }
+    }
   }
 
   if ($RemoveNssm) {
@@ -200,13 +259,24 @@ try {
   }
 
   # Deleting the project throws away work that isn't on GitHub, so say so and confirm once more.
-  if ($DeleteProject -and (Test-Path (Join-Path $ProjectDir '.git')) -and (Get-Command git -ErrorAction SilentlyContinue)) {
-    $dirty = & git -C $ProjectDir status --porcelain 2>$null
-    $ahead = & git -C $ProjectDir rev-list --count '@{u}..HEAD' 2>$null
-    if ($dirty -or ($ahead -and [int]$ahead -gt 0)) {
-      Warn 'The project folder has changes that are not on GitHub (uncommitted files or commits not pushed).'
-      $typed = Read-Host 'Type DELETE to delete it anyway, or press Enter to keep the folder'
-      if ($typed -ne 'DELETE') { $DeleteProject = [switch]$false; Ok 'The project folder will be kept.' }
+  if ($DeleteProject -and (Test-UnsavedWork $ProjectDir)) {
+    Warn 'The project folder has changes that are not on GitHub (uncommitted files or commits not pushed).'
+    $typed = Read-Host 'Type DELETE to delete it anyway, or press Enter to keep the folder'
+    if ($typed -ne 'DELETE') { $DeleteProject = [switch]$false; Ok 'The project folder will be kept.' }
+  }
+
+  # The service may serve a different copy of the app than this one (setup.cmd run from another folder).
+  $serviceDir = Get-ServiceAppDir
+  if ($serviceDir -and -not (Same-Folder $serviceDir $ProjectDir) -and (Test-AppFolder $serviceDir)) {
+    $ServiceCopy = $serviceDir
+    Write-Host ''
+    Warn "The service serves a different copy of the app: $serviceDir"
+    Warn 'Its node_modules and dist will be deleted too.'
+    if (-not $Yes -and -not $DeleteServiceCopy) { $DeleteServiceCopy = [switch](Ask "Also delete that whole copy ($serviceDir)?") }
+    if ($DeleteServiceCopy -and (Test-UnsavedWork $serviceDir)) {
+      Warn 'That copy has changes that are not on GitHub (uncommitted files or commits not pushed).'
+      $typed = Read-Host 'Type DELETE to delete it anyway, or press Enter to keep it'
+      if ($typed -ne 'DELETE') { $DeleteServiceCopy = [switch]$false; Ok 'That copy will be kept (only node_modules and dist are deleted).' }
     }
   }
 
@@ -222,11 +292,13 @@ try {
     Step 'Asking Windows for administrator permission (needed to remove the service)'
     $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"", '-ServiceOnly', '-Elevated')
     if ($RemoveNssm) { $argList += '-RemoveNssm' }
+    if ($ServiceCopy) { $argList += '-ServiceCopy'; $argList += "`"$ServiceCopy`"" }
+    if ($DeleteServiceCopy) { $argList += '-DeleteServiceCopy' }
     try {
       $p = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $argList -Verb RunAs -Wait -PassThru
       if ($p.ExitCode -ne 0) { Warn 'The administrator step reported a problem (see its window).' }
     } catch {
-      Warn 'Administrator permission was not given, so the service and its logs were left in place.'
+      Warn 'Administrator permission was not given, so the service, its logs and any copy it used were left in place.'
       Warn 'Run uninstall.cmd again and choose Yes when Windows asks.'
     }
   }
@@ -241,14 +313,7 @@ try {
     Ok 'The project folder will be deleted as soon as you close this window.'
   } else {
     Step 'Deleting installed packages and build output'
-    foreach ($name in 'node_modules', 'dist') {
-      $path = Join-Path $ProjectDir $name
-      if (Test-Path $path) {
-        Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction SilentlyContinue
-        if (Test-Path $path) { Warn "Could not delete all of $path (a file may be in use). Delete it by hand." }
-        else { Ok "Deleted $path" }
-      }
-    }
+    Clear-AppFolder $ProjectDir $false
     Ok "The source code is still in $ProjectDir. Run setup.cmd to install again."
   }
 

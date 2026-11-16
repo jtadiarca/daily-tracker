@@ -56,6 +56,7 @@ Double-click **`uninstall.cmd`** in the project folder to remove what setup adde
 2. Stops and removes the **DailyTaskTracker** service. Windows asks for administrator permission; press Enter in the admin window when it's done.
 3. Deletes the service logs in `C:\ProgramData\DailyTaskTracker`.
 4. Deletes `node_modules` and `dist` from the project folder. The source code stays, so `setup.cmd` can install it again.
+5. If the service was serving a different copy of the app (for example one unzipped into `C:\Program Files`), it deletes that copy's `node_modules` and `dist` too, and asks whether to delete the whole copy.
 
 It also asks about two optional steps:
 
@@ -64,7 +65,7 @@ It also asks about two optional steps:
 
 Git and Node.js stay installed, because other programs may use them. **Your tasks are stored in the browser, not in the project folder**, so the uninstaller doesn't touch them. To remove them as well, export a backup first if you want one, then either uninstall the installed app from its menu (three dots > Uninstall, with "Also clear data"), or in Chrome or Edge go to Settings > Privacy > Site settings > View data, find `localhost:4173` and delete it.
 
-Options: `uninstall.cmd -Yes` (don't ask to confirm), `-RemoveNssm`, `-DeleteProject`.
+Options: `uninstall.cmd -Yes` (don't ask to confirm), `-RemoveNssm`, `-DeleteProject`, `-DeleteServiceCopy`.
 
 ### Running the script yourself
 
