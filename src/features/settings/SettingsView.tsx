@@ -1,29 +1,24 @@
-import { useEffect, useState } from 'react'
 import { updateSettings } from '../../db/settingsRepo'
 import { BackupSection } from '../backup/BackupSection'
 import { CategoryManager } from '../categories/CategoryManager'
 import { VoiceSettings } from '../reminders/VoiceSettings'
-import { getPermission, requestPermission, type PermissionState } from '../reminders/notify'
+import type { PermissionState } from '../reminders/notify'
+import { PROBLEM_TEXT, useNotificationPermission } from '../reminders/usePermission'
 import { ThemeSettings } from './ThemeSettings'
 import { useInstallPrompt } from './useInstallPrompt'
 import { useSettings } from './useSettings'
 
 const PERM_TEXT: Record<PermissionState, string> = {
   granted: 'Allowed',
-  denied: 'Blocked. Allow notifications for this site in your browser settings.',
-  default: 'Not asked yet',
+  denied: 'Blocked. Click the lock or site-settings icon at the left end of the address bar, set Notifications to Allow, then reload.',
+  default: 'Not turned on yet',
   unsupported: 'Not supported in this browser',
 }
 
 export function SettingsView() {
   const s = useSettings()
   const install = useInstallPrompt()
-  const [perm, setPerm] = useState<PermissionState>(getPermission())
-  useEffect(() => {
-    const refresh = () => setPerm(getPermission())
-    window.addEventListener('focus', refresh)
-    return () => window.removeEventListener('focus', refresh)
-  }, [])
+  const { perm, ask, asking, problem } = useNotificationPermission()
 
   return (
     <section aria-labelledby="settings-h" className="page">
@@ -57,7 +52,8 @@ export function SettingsView() {
           </select>
         </label>
         <p>Notification permission: <strong>{PERM_TEXT[perm]}</strong></p>
-        {perm === 'default' && <button className="btn-filled mt-3" onClick={async () => setPerm(await requestPermission())}>Turn on reminders</button>}
+        {perm === 'default' && <button className="btn-filled mt-3" disabled={asking && problem !== 'waiting'} onClick={() => void ask()}>Turn on reminders</button>}
+        {perm === 'default' && problem && <p role="status" className="mt-2 rounded-m3-sm bg-secondary-container p-3 text-sm text-on-secondary-container">{PROBLEM_TEXT[problem]}</p>}
         <p className="mt-2 text-sm text-on-surface-variant">This permission belongs to this device and is never included in backups.</p>
       </section>
 
