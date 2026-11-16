@@ -33,7 +33,7 @@ A personal daily to-do app that works offline and keeps all of its data on your 
 The setup script installs what is missing and gets the app running. It will:
 
 1. Allow local PowerShell scripts for your user (execution policy `RemoteSigned`), which fixes the "running scripts is disabled" error for `npm`.
-2. Install Git and Node.js LTS with winget if they are missing or older than Node 20.
+2. Install Git and Node.js LTS with winget if they are missing or older than Node 22.
 3. Clone this repository (or update it), run `npm install`, and run the tests.
 4. Start the development server and open the app in your browser.
 
@@ -66,7 +66,7 @@ powershell -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.c
 
 If the repository is private, open `scripts/setup.ps1` on GitHub, choose Raw, save it, and run it with the command above. Git will ask you to sign in when it clones.
 
-Notes: Windows may show a permission prompt while winget installs Git and Node. The script needs winget, which comes with the Microsoft Store's App Installer on Windows 10 and 11. On macOS or Linux, install Git and Node.js 20 or newer yourself, then follow the steps below.
+Notes: Windows may show a permission prompt while winget installs Git and Node. The script needs winget, which comes with the Microsoft Store's App Installer on Windows 10 and 11. On macOS or Linux, install Git and Node.js 22.12 or newer yourself, then follow the steps below.
 
 ## Start the app automatically when Windows boots (optional)
 
@@ -112,7 +112,7 @@ Limits you cannot avoid in a browser app:
 
 ## Run it
 
-Requires Node.js 20 or newer.
+Requires Node.js 22.12 or newer.
 
 ```bash
 npm install

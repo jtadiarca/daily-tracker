@@ -71,7 +71,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$MinNodeMajor = 20
+$MinNodeMajor = 22
 $ServiceName = 'DailyTaskTracker'
 
 function Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
@@ -323,7 +323,7 @@ try {
   }
 
   Step 'Installing dependencies (npm install)'
-  Warn 'npm may print audit warnings and an esbuild install-script notice. They are expected and do not stop the app.'
+  Warn 'npm may report 4 low-severity audit warnings (deepmerge, used only while building; no fixed version exists yet). They are expected and do not affect the app.'
   Run-Npm 'install'
 
   if (-not $SkipTests) {
