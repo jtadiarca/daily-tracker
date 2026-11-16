@@ -181,8 +181,8 @@ function Install-DttService {
   }
   Write-Host "`n    It now starts automatically when Windows boots."
   Write-Host "    Logs:    $logDir"
-  Write-Host "    Update:  git pull, then run this script again with -Service"
-  Write-Host "    Remove:  run this script with -RemoveService"
+  Write-Host "    Update:  double-click setup.cmd (it pulls the latest code and rebuilds)"
+  Write-Host "    Remove:  double-click uninstall.cmd"
 }
 
 function Find-Browser([string]$pref) {

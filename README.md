@@ -48,6 +48,24 @@ If the project is already on the machine, double-click **`setup.cmd`** in the pr
 
 It doesn't start the development server. Open http://localhost:4173 instead. To pick options yourself, pass them on the command line, for example `setup.cmd -NoStart` installs everything without the service or shortcut.
 
+### Uninstall: double-click `uninstall.cmd`
+
+Double-click **`uninstall.cmd`** in the project folder to remove what setup added. It asks you to confirm first, then:
+
+1. Removes the startup shortcut.
+2. Stops and removes the **DailyTaskTracker** service. Windows asks for administrator permission; press Enter in the admin window when it's done.
+3. Deletes the service logs in `C:\ProgramData\DailyTaskTracker`.
+4. Deletes `node_modules` and `dist` from the project folder. The source code stays, so `setup.cmd` can install it again.
+
+It also asks about two optional steps:
+
+- **Uninstall NSSM**, the service helper setup installed. It is kept if another service still uses it.
+- **Delete the whole project folder.** If the folder has changes that aren't on GitHub, you have to type DELETE to go ahead. The folder is deleted when you close the uninstall window.
+
+Git and Node.js stay installed, because other programs may use them. **Your tasks are stored in the browser, not in the project folder**, so the uninstaller doesn't touch them. To remove them as well, export a backup first if you want one, then either uninstall the installed app from its menu (three dots > Uninstall, with "Also clear data"), or in Chrome or Edge go to Settings > Privacy > Site settings > View data, find `localhost:4173` and delete it.
+
+Options: `uninstall.cmd -Yes` (don't ask to confirm), `-RemoveNssm`, `-DeleteProject`.
+
 ### Running the script yourself
 
 From PowerShell in the project folder, with no options, the script sets up the project and starts the development server (http://localhost:5173):
@@ -76,8 +94,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -Service
 
 Windows asks for administrator permission. The script then builds the app, installs NSSM (a small tool that lets Windows run a normal program as a service) with winget, and registers a service named `DailyTaskTracker` that starts at boot. It serves the built app with `vite preview` at `http://localhost:4173` (change it with `-Port`). The server listens on `127.0.0.1` only, so other computers cannot reach it. Logs are in `C:\ProgramData\DailyTaskTracker`.
 
-- **Update:** `git pull`, then run the same command again. It rebuilds and replaces the service.
-- **Remove:** `powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -RemoveService`.
+- **Update:** double-click `setup.cmd`, or `git pull` and run the same command again. It rebuilds and replaces the service.
+- **Remove:** double-click `uninstall.cmd` to remove everything, or just the service with `powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1 -RemoveService`.
 - **Check:** `Get-Service DailyTaskTracker`.
 
 Things to know:
@@ -218,6 +236,7 @@ Reminders are scheduled with timers while the app is open, and re-planned whenev
 ## Project layout
 
 ```
+scripts/uninstall.ps1  removes the service, its logs, the startup shortcut and installed packages (uninstall.cmd runs it)
 scripts/setup.ps1   one-command setup for a new Windows PC, with optional boot-time service and login shortcut (setup.cmd runs it with -Service -AutoOpen: the full setup or update in one double-click)
 src/db              Dexie schema, repositories, backup and import code
 src/lib             pure, tested logic: dates, recurrence, status, stats, reminders, merge, schema, migrations
